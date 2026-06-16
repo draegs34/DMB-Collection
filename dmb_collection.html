@@ -117,6 +117,77 @@ select:focus{border-color:#378ADD}
 .map-side h3{font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
 .intl-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f3f2eb;font-size:13px;cursor:pointer}
 .intl-row:hover{background:#fafaf7}
+
+/* ── DARK MODE ──────────────────────────────────────────────────────────── */
+body.dark{background:#181816;color:#e8e7e2}
+body.dark nav{background:#222220;border-bottom-color:#333330}
+body.dark .tab{color:#777}
+body.dark .tab:hover{color:#e8e7e2}
+body.dark .tab.active{color:#5fa8e8;border-bottom-color:#5fa8e8}
+body.dark .tc{background:#333330;color:#777}
+body.dark .tab.active .tc{background:#1a3050;color:#5fa8e8}
+body.dark #darkToggle{background:#2a2a28;border-color:#3a3a38;color:#aaa}
+body.dark #darkToggle:hover{background:#333330;color:#e8e7e2}
+body.dark .metric{background:#222220;border-color:#333330}
+body.dark .metric-label{color:#777}
+body.dark .metric-value{color:#e8e7e2}
+body.dark .metric-sub{color:#555}
+body.dark .chart-card{background:#222220;border-color:#333330}
+body.dark .chart-card h2{color:#777}
+body.dark .chart-hint{color:#555}
+body.dark .bar-track{background:#2a2a28}
+body.dark .bar-label{color:#888}
+body.dark .bar-val{color:#777}
+body.dark .cov-track{background:#2a2a28}
+body.dark .legend{color:#888}
+body.dark .filters input[type=text]{background:#222220;border-color:#3a3a38;color:#e8e7e2}
+body.dark select{background:#222220;border-color:#3a3a38;color:#e8e7e2}
+body.dark .sort-btn{background:#222220;border-color:#3a3a38;color:#aaa}
+body.dark .sort-btn.active{background:#1a3868;color:#5fa8e8;border-color:#1a3868}
+body.dark .clear-btn{color:#5fa8e8}
+body.dark .clear-btn:hover{background:#1a3050}
+body.dark .active-filter{background:#1a3050;color:#5fa8e8;border-color:#1e4070}
+body.dark .active-filter button{color:#5fa8e8}
+body.dark .count-label{color:#555}
+body.dark .r{background:#222220;border-color:#333330}
+body.dark .r:hover{border-color:#5fa8e8}
+body.dark .r.open{border-color:#4d94e0}
+body.dark .r-date{color:#5fa8e8}
+body.dark .r-name{color:#555}
+body.dark .r-venue{color:#e8e7e2}
+body.dark .r-city{color:#777}
+body.dark .r-tour{color:#555}
+body.dark .r-meta{color:#555}
+body.dark .expand{border-top-color:#2a2a28;color:#999}
+body.dark .expand a{color:#5fa8e8}
+body.dark .b-flac{background:#1a3050;color:#7ab8f5}
+body.dark .b-flac24{background:#0d3028;color:#4ecba0}
+body.dark .b-shn{background:#2a2a28;color:#999}
+body.dark .b-src{background:#3a2810;color:#e0a060}
+body.dark .b-multi{background:#1e1a40;color:#9d98e8}
+body.dark .b-have{background:#0d3028;color:#4ecba0}
+body.dark .no-res{color:#555}
+body.dark .page-note{color:#555}
+body.dark .sort-bar span{color:#666}
+body.dark .gap-r{background:#222220;border-color:#333330}
+body.dark .gap-r:hover{border-color:#5fa8e8}
+body.dark .gap-date{color:#777}
+body.dark .gap-venue{color:#e8e7e2}
+body.dark .gap-city{color:#555}
+body.dark .gap-link{color:#5fa8e8}
+body.dark .tour-section-head{color:#777;border-bottom-color:#333330}
+body.dark .tour-row{border-bottom-color:#2a2a28}
+body.dark .tour-row:hover{background:#252523}
+body.dark .tour-name{color:#e8e7e2}
+body.dark .tour-stats{color:#777}
+body.dark .tour-bar-wrap{background:#2a2a28}
+body.dark .tour-btn{color:#5fa8e8;background:#1a3050;border-color:#1e4070}
+body.dark .tour-btn:hover{background:#1e3860}
+body.dark .map-tooltip{background:#e8e7e2;color:#1a1a18}
+body.dark .map-side h3{color:#777}
+body.dark .intl-row{border-bottom-color:#2a2a28}
+body.dark .intl-row:hover{background:#252523}
+body.dark .intl-row span:first-child{color:#e8e7e2!important}
 </style>
 </head>
 <body>
@@ -819,6 +890,22 @@ gapYearSel.addEventListener('change',renderGaps);
   };
 })();
 
+
+// ── Dark-mode toggle ─────────────────────────────────────────────────────────
+function toggleDark() {
+  var isDark = document.body.classList.toggle('dark');
+  document.getElementById('darkToggle').textContent = isDark ? '☀ Light' : '🌙 Dark';
+  try { localStorage.setItem('dmb-dark', isDark ? '1' : '0'); } catch(e) {}
+}
+(function(){
+  try {
+    if (localStorage.getItem('dmb-dark') === '1') {
+      document.body.classList.add('dark');
+      var btn = document.getElementById('darkToggle');
+      if (btn) btn.textContent = '☀ Light';
+    }
+  } catch(e) {}
+})();
 </script>
 </body>
 </html>
