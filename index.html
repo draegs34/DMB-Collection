@@ -189,6 +189,89 @@ body.dark .intl-row{border-bottom-color:#2a2a28}
 body.dark .intl-row:hover{background:#252523}
 body.dark .intl-row span:first-child{color:#e8e7e2!important}
 body.dark .ver-footer{color:#444!important}
+
+/* ── MOBILE / RESPONSIVE ────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+
+  /* Nav: scrollable tabs, no wrapping */
+  nav {
+    padding: 0 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  nav::-webkit-scrollbar { display: none; }
+  nav h1 { font-size: 14px; margin-right: 14px; flex-shrink: 0; white-space: nowrap; }
+  .tab { padding: 12px 10px; font-size: 12px; flex-shrink: 0; }
+  #darkToggle { padding: 4px 8px; font-size: 11px; flex-shrink: 0; }
+
+  /* Pages: tighter padding */
+  .page { padding: 12px; }
+
+  /* Metric grid: 2 columns */
+  .metric-grid { grid-template-columns: repeat(2, 1fr); }
+  .metric-value { font-size: 18px; }
+
+  /* Chart cards: stack the row2 side-by-side pair */
+  .row2 { grid-template-columns: 1fr; }
+
+  /* Bar chart labels: narrower */
+  .bar-label { width: 100px; font-size: 11px; }
+
+  /* Filters: full-width search, wrap naturally */
+  .filters input[type=text] { width: 100%; }
+  .sort-bar { gap: 4px; }
+  .sort-btn { padding: 4px 8px; font-size: 11px; }
+
+  /* Browser result cards: tighter layout */
+  .r {
+    grid-template-columns: auto 1fr;
+    gap: 8px;
+  }
+  .r-meta { grid-column: 1 / -1; text-align: left; font-size: 11px; }
+  .r-left { min-width: 86px; }
+  .r-date { font-size: 12px; }
+  .r-venue { font-size: 12px; }
+  .r-city { font-size: 11px; }
+
+  /* Tour rows: drop the progress bar, keep name/stats/button */
+  .tour-row { grid-template-columns: 1fr 80px 50px; gap: 6px; }
+  .tour-bar-wrap { display: none; }
+  .tour-name { font-size: 12px; }
+  .tour-stats { font-size: 11px; }
+
+  /* Map: smaller squares so it fits on screen */
+  .map-grid {
+    grid-template-columns: repeat(12, 24px);
+    grid-template-rows: repeat(9, 20px);
+    gap: 1px;
+  }
+  .sq { width: 24px; height: 20px; font-size: 7px; border-radius: 2px; }
+
+  /* Map sidebar stacks below the map */
+  .map-wrap { flex-direction: column; }
+  .map-side { min-width: unset; width: 100%; }
+
+  /* Gap rows */
+  .gap-r { flex-wrap: wrap; gap: 6px; }
+  .gap-link { margin-left: 0; }
+
+  /* Version footer */
+  .ver-footer { padding: 16px 12px 24px; }
+}
+
+@media (max-width: 400px) {
+  /* Very small phones: map drops to tiny */
+  .map-grid {
+    grid-template-columns: repeat(12, 20px);
+    grid-template-rows: repeat(9, 17px);
+  }
+  .sq { width: 20px; height: 17px; font-size: 6px; }
+
+  /* Stack metric grid to single column */
+  .metric-grid { grid-template-columns: 1fr; }
+}
+
 </style>
 </head>
 <body>
@@ -909,5 +992,5 @@ function toggleDark() {
   } catch(e) {}
 })();
 </script>
-<div style="text-align:center;padding:24px 20px 32px;font-size:11px;color:#bbb">DMB Collection Dashboard &nbsp;·&nbsp; v2.0 &nbsp;·&nbsp; built 2026-06-16</div></body>
+<div style="text-align:center;padding:24px 20px 32px;font-size:11px;color:#bbb">DMB Collection Dashboard &nbsp;·&nbsp; v2.1 &nbsp;·&nbsp; built 2026-06-16</div></body>
 </html>
