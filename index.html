@@ -149,6 +149,7 @@ body.dark .clear-btn:hover{background:#1a3050}
 body.dark .active-filter{background:#1a3050;color:#5fa8e8;border-color:#1e4070}
 body.dark .active-filter button{color:#5fa8e8}
 body.dark .count-label{color:#555}
+body.dark .sort-bar span{color:#666}
 body.dark .r{background:#222220;border-color:#333330}
 body.dark .r:hover{border-color:#5fa8e8}
 body.dark .r.open{border-color:#4d94e0}
@@ -168,7 +169,6 @@ body.dark .b-multi{background:#1e1a40;color:#9d98e8}
 body.dark .b-have{background:#0d3028;color:#4ecba0}
 body.dark .no-res{color:#555}
 body.dark .page-note{color:#555}
-body.dark .sort-bar span{color:#666}
 body.dark .gap-r{background:#222220;border-color:#333330}
 body.dark .gap-r:hover{border-color:#5fa8e8}
 body.dark .gap-date{color:#777}
@@ -188,6 +188,7 @@ body.dark .map-side h3{color:#777}
 body.dark .intl-row{border-bottom-color:#2a2a28}
 body.dark .intl-row:hover{background:#252523}
 body.dark .intl-row span:first-child{color:#e8e7e2!important}
+body.dark .ver-footer{color:#444!important}
 </style>
 </head>
 <body>
@@ -199,6 +200,7 @@ body.dark .intl-row span:first-child{color:#e8e7e2!important}
   <div class="tab" onclick="showTab('gaps',this)">Gaps <span class="tc" id="gapsCount"></span></div>
   <div class="tab" onclick="showTab('tours',this)">Tours <span class="tc" id="toursCount"></span></div>
   <div class="tab" onclick="showTab('map',this)">Map</div>
+<button id="darkToggle" onclick="toggleDark()" style="margin-left:auto;background:#f0efe7;border:1px solid #d0cfc7;border-radius:6px;padding:5px 11px;font-size:12px;cursor:pointer;color:#555;white-space:nowrap;flex-shrink:0">🌙 Dark</button>
 </nav>
 
 <!-- ═══════════════════════════ DASHBOARD ═══════════════════════════ -->
@@ -214,7 +216,7 @@ body.dark .intl-row span:first-child{color:#e8e7e2!important}
   <div class="chart-card">
     <h2>Recordings by year</h2>
     <div class="chart-hint">Click a bar to browse that year's recordings</div>
-    <div style="position:relative;height:200px"><canvas id="yearChart" role="img" aria-label="Bar chart of recordings by year, click to filter browser">Peaks in 2009–2010.</canvas></div>
+    <div style="position:relative;overflow:hidden;height:200px"><canvas id="yearChart" role="img" aria-label="Bar chart of recordings by year, click to filter browser">Peaks in 2009–2010.</canvas></div>
   </div>
 
   <div class="row2">
@@ -226,7 +228,7 @@ body.dark .intl-row span:first-child{color:#e8e7e2!important}
     <div class="chart-card" style="margin-bottom:0">
       <h2>Source type (tagged recordings)</h2>
       <div class="chart-hint">Click a bar to browse by source type</div>
-      <div style="position:relative;height:210px"><canvas id="srcChart" role="img" aria-label="Horizontal bar of source types, click to filter browser">Digital SBD leads.</canvas></div>
+      <div style="position:relative;overflow:hidden;height:210px"><canvas id="srcChart" role="img" aria-label="Horizontal bar of source types, click to filter browser">Digital SBD leads.</canvas></div>
     </div>
   </div>
 
@@ -237,18 +239,18 @@ body.dark .intl-row span:first-child{color:#e8e7e2!important}
       <h2>Format</h2>
       <div class="chart-hint">Click a slice to browse by format</div>
       <div class="legend" id="fmtLeg"></div>
-      <div style="position:relative;height:170px"><canvas id="fmtChart" role="img" aria-label="Donut chart of audio formats">FLAC 71%, SHN 24%.</canvas></div>
+      <div style="position:relative;overflow:hidden;height:170px"><canvas id="fmtChart" role="img" aria-label="Donut chart of audio formats">FLAC 71%, SHN 24%.</canvas></div>
     </div>
     <div class="chart-card" style="margin-bottom:0">
       <h2>Multiple recordings per date</h2>
       <div style="margin-top:12px">
-        <div class="bar-row"><span class="bar-label">1 recording</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:#185FA5"></div></div><span class="bar-val">896</span></div><div class="bar-row"><span class="bar-label">2–3 recordings</span><div class="bar-track"><div class="bar-fill" style="width:90%;background:#1D9E75"></div></div><span class="bar-val">810</span></div><div class="bar-row"><span class="bar-label">4–6 recordings</span><div class="bar-track"><div class="bar-fill" style="width:31%;background:#BA7517"></div></div><span class="bar-val">279</span></div><div class="bar-row"><span class="bar-label">7+ recordings</span><div class="bar-track"><div class="bar-fill" style="width:12%;background:#A32D2D"></div></div><span class="bar-val">107</span></div></div><span class="bar-val">107</span></div>
+        <div class="bar-row"><span class="bar-label">1 recording</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:#185FA5"></div></div><span class="bar-val">896</span></div><div class="bar-row"><span class="bar-label">2–3 recordings</span><div class="bar-track"><div class="bar-fill" style="width:90%;background:#1D9E75"></div></div><span class="bar-val">810</span></div><div class="bar-row"><span class="bar-label">4–6 recordings</span><div class="bar-track"><div class="bar-fill" style="width:31%;background:#BA7517"></div></div><span class="bar-val">279</span></div><div class="bar-row"><span class="bar-label">7+ recordings</span><div class="bar-track"><div class="bar-fill" style="width:12%;background:#A32D2D"></div></div><span class="bar-val">107</span></div>
       </div>
       <div style="margin-top:20px">
         <h2 style="font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">FLAC bit depth</h2>
         <div class="chart-hint" style="margin-bottom:8px">Click a slice to browse by bit depth</div>
         <div class="legend" id="bitLeg"></div>
-        <div style="position:relative;height:110px"><canvas id="bitChart" role="img" aria-label="Donut chart FLAC bit depth">FLAC16 73%, FLAC24 27%.</canvas></div>
+        <div style="position:relative;overflow:hidden;height:110px"><canvas id="bitChart" role="img" aria-label="Donut chart FLAC bit depth">FLAC16 73%, FLAC24 27%.</canvas></div>
       </div>
     </div>
   </div>
@@ -907,5 +909,5 @@ function toggleDark() {
   } catch(e) {}
 })();
 </script>
-</body>
+<div style="text-align:center;padding:24px 20px 32px;font-size:11px;color:#bbb">DMB Collection Dashboard &nbsp;·&nbsp; v2.0 &nbsp;·&nbsp; built 2026-06-16</div></body>
 </html>
