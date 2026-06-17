@@ -272,6 +272,52 @@ body.dark .ver-footer{color:#444!important}
   .metric-grid { grid-template-columns: 1fr; }
 }
 
+
+/* ── NOTIFICATIONS ──────────────────────────────────────────────────────── */
+#notif-container {
+  position: fixed;
+  top: 52px;
+  right: 16px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 340px;
+  pointer-events: none;
+}
+.notif {
+  pointer-events: all;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  animation: notifSlide .25s ease;
+  transition: opacity .2s;
+}
+@keyframes notifSlide {
+  from { opacity:0; transform:translateX(20px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+.notif-new   { background:#1a3050; border:1px solid #2d5a8a; color:#c8dff5; }
+.notif-gap   { background:#1D4A2E; border:1px solid #2d7a4a; color:#c0e8cc; }
+body.dark .notif-new { background:#0d2040; border-color:#1e4070; }
+body.dark .notif-gap { background:#0d3020; border-color:#1a5030; }
+.notif-icon  { font-size:20px; line-height:1.1; flex-shrink:0; }
+.notif-body  { flex:1; min-width:0; }
+.notif-tag   { font-size:10px; font-weight:700; text-transform:uppercase;
+               letter-spacing:.07em; opacity:.7; margin-bottom:2px; }
+.notif-date  { font-size:13px; font-weight:600; }
+.notif-info  { font-size:12px; opacity:.75; white-space:nowrap;
+               overflow:hidden; text-overflow:ellipsis; }
+.notif-close { background:none; border:none; color:inherit; opacity:.5;
+               cursor:pointer; font-size:16px; line-height:1;
+               padding:0; flex-shrink:0; }
+.notif-close:hover { opacity:1; }
+@media (max-width:700px) {
+  #notif-container { left:8px; right:8px; max-width:none; top:50px; }
+}
 </style>
 </head>
 <body>
@@ -991,6 +1037,93 @@ function toggleDark() {
     }
   } catch(e) {}
 })();
+
+// ── Notifications ────────────────────────────────────────────────────────────
+(function(){
+  // folder names of shows this session
+  var currentFolders = SHOWS.map(function(s){ return s[11]; });
+
+  var KEY_SEEN      = 'dmb-seen-folders';
+  var KEY_DISMISSED = 'dmb-dismissed-notifs';
+
+  var dismissed, prevFolders;
+  try {
+    dismissed   = new Set(JSON.parse(localStorage.getItem(KEY_DISMISSED) || '[]'));
+    prevFolders = JSON.parse(localStorage.getItem(KEY_SEEN));
+  } catch(e) { dismissed = new Set(); prevFolders = null; }
+
+  // Always update stored folder list for next visit
+  try { localStorage.setItem(KEY_SEEN, JSON.stringify(currentFolders)); } catch(e) {}
+
+  // First visit: silently mark everything as seen, no notifications
+  if (!prevFolders) return;
+
+  var prevSet = new Set(prevFolders);
+
+  // New shows = in SHOWS now but not last visit, and not already dismissed
+  var newShows = SHOWS.filter(function(s){
+    return !prevSet.has(s[11]) && !dismissed.has(s[11]);
+  });
+  if (!newShows.length) return;
+
+  // Which dates had recordings last visit?
+  var prevDateSet = new Set();
+  SHOWS.forEach(function(s){ if (prevSet.has(s[11])) prevDateSet.add(s[0]); });
+
+  var container = document.createElement('div');
+  container.id = 'notif-container';
+
+  newShows.forEach(function(show) {
+    var date   = show[0];
+    var folder = show[11];
+    var alm    = ALMANAC[date];
+
+    // Gap-fill: almanac knows the date AND we had no recording for it before
+    var isGap = alm && !prevDateSet.has(date);
+
+    var notif = document.createElement('div');
+    notif.className = 'notif ' + (isGap ? 'notif-gap' : 'notif-new');
+    notif.dataset.folder = folder;
+
+    var icon    = isGap ? '🎉' : '🎵';
+    var tag     = isGap ? 'Gap filled!' : 'New recording';
+    var info    = alm ? (alm.venue || '') + (alm.city ? (alm.venue ? ' · ' : '') + alm.city : '')
+                      : folder;
+
+    notif.innerHTML =
+      '<span class="notif-icon">' + icon + '</span>' +
+      '<div class="notif-body">' +
+        '<div class="notif-tag">' + tag + '</div>' +
+        '<div class="notif-date">' + date + '</div>' +
+        '<div class="notif-info">' + (info || folder) + '</div>' +
+      '</div>' +
+      '<button class="notif-close" title="Dismiss">✕</button>';
+
+    notif.querySelector('.notif-close').addEventListener('click', function(){
+      dismissNotif(notif);
+    });
+
+    container.appendChild(notif);
+  });
+
+  // Insert after nav so it's in the right stacking context
+  document.body.appendChild(container);
+})();
+
+function dismissNotif(notif) {
+  notif.style.opacity = '0';
+  setTimeout(function() {
+    var folder = notif.dataset.folder;
+    notif.remove();
+    try {
+      var d = JSON.parse(localStorage.getItem('dmb-dismissed-notifs') || '[]');
+      d.push(folder);
+      localStorage.setItem('dmb-dismissed-notifs', JSON.stringify(d));
+    } catch(e) {}
+    var c = document.getElementById('notif-container');
+    if (c && !c.children.length) c.remove();
+  }, 220);
+}
 </script>
 <div style="text-align:center;padding:24px 20px 32px;font-size:11px;color:#bbb">DMB Collection Dashboard &nbsp;·&nbsp; v2.1 &nbsp;·&nbsp; built 2026-06-16</div></body>
 </html>
