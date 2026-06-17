@@ -501,14 +501,21 @@ def main():
     almanac = extract_almanac(html)
     print(f"Loaded: {len(shows)} recordings, {len(almanac)} almanac dates\n")
 
-    # ── Scan new local recordings ──
-    print(f"📂 Scanning {CURRENT_YEAR} recordings…")
+    # ── Scan new local recordings (all years) ──
+    print(f"📂 Scanning all year folders…")
     existing_folders = {s[11] for s in shows}
-    new_shows = scan_year(CURRENT_YEAR, existing_folders)
+    new_shows = []
+    if COLLECTION_ROOT.exists():
+        year_dirs = sorted([d for d in COLLECTION_ROOT.iterdir() if d.is_dir()])
+        for year_dir in year_dirs:
+            year_new = scan_year(year_dir.name, existing_folders)
+            if year_new:
+                print(f"  {year_dir.name}: {len(year_new)} new")
+                new_shows += year_new
     if new_shows:
         shows += new_shows
         shows.sort(key=lambda s: (s[0], s[11]))
-        print(f"  → {len(new_shows)} new recording(s) added")
+        print(f"  → {len(new_shows)} new recording(s) added total")
     else:
         print("  → No new recordings found")
 
@@ -538,17 +545,36 @@ def main():
     print(f"   Most recent:  {stats['recent_label']}")
 
     # ── Patch and write HTML ──
-    if not new_shows and new_alm_count == 0:
-        print("\n✅ Nothing changed — HTML not rewritten.")
-        return
+    run_ts = datetime.now().strftime('%Y-%m-%d %H:%M')
+    data_changed = bool(new_shows or new_alm_count)
 
-    print(f"\n✍  Patching {HTML_FILE.name}…")
-    updated_html = patch_html(html, shows, almanac, stats)
+    if data_changed:
+        print(f"\n✍  Patching {HTML_FILE.name}…")
+        updated_html = patch_html(html, shows, almanac, stats)
+    else:
+        updated_html = html
+
+    # Always update the "last run" timestamp in the footer
+    if 'last run' in updated_html:
+        updated_html = re.sub(
+            r'last run \d{4}-\d{2}-\d{2} \d{2}:\d{2}',
+            f'last run {run_ts}',
+            updated_html, count=1
+        )
+    else:
+        updated_html = updated_html.replace(
+            'DMB Collection Dashboard',
+            f'DMB Collection Dashboard &nbsp;·&nbsp; last run {run_ts}',
+            1
+        )
+
     HTML_FILE.write_text(updated_html, encoding='utf-8')
-    print(f"✅ Done — reload dmb_collection.html in your browser.")
 
-    # ── Push to GitHub Pages ──
-    git_push(updated_html)
+    if data_changed:
+        print(f"✅ Done — {len(new_shows)} new recording(s), reload to see changes.")
+        git_push(updated_html)
+    else:
+        print(f"\n✅ No new data — footer timestamp updated ({run_ts}).")
 
 # ── GitHub Pages push ─────────────────────────────────────────────────────────
 
