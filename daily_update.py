@@ -182,7 +182,9 @@ def extract_almanac(html):
     """Slice out the ALMANAC object by string position."""
     marker = 'const ALMANAC='
     start  = html.find(marker) + len(marker)
-    end    = html.find(';\n\nconst dateCounts=', start)
+    end = html.find(';\nconst PLEX_MAP=', start)
+    if end == -1:
+        end = html.find(';\n\nconst dateCounts=', start)
     return json.loads(html[start:end])
 
 # ── Part 2: Scan CURRENT_YEAR recording folder ────────────────────────────────
@@ -405,7 +407,9 @@ def patch_html(html, shows, almanac, st):
     # 2) ALMANAC — slice replacement (recalculate positions after SHOWS replacement)
     alm_marker = 'const ALMANAC='
     a_start = html.find(alm_marker) + len(alm_marker)
-    a_end   = html.find(';\n\nconst dateCounts=', a_start)
+    a_end = html.find(';\nconst PLEX_MAP=', a_start)
+    if a_end == -1:
+        a_end = html.find(';\n\nconst dateCounts=', a_start)
     alm_json = json.dumps(almanac, ensure_ascii=False, separators=(',',':'))
     html = html[:a_start] + alm_json + html[a_end:]
 
