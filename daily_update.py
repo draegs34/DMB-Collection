@@ -26,6 +26,14 @@ BASE    = "https://dmbalmanac.com"
 DELAY   = 1.0
 HEADERS = {"User-Agent": "DMB-Collection-Scanner/2.0 (personal hobby project)"}
 
+# ── Plex config ───────────────────────────────────────────────────────────────
+# Token is read from ~/.dmb_plex_token — never hardcoded here.
+_PLEX_TOKEN_FILE = Path.home() / ".dmb_plex_token"
+PLEX_TOKEN       = _PLEX_TOKEN_FILE.read_text().strip() if _PLEX_TOKEN_FILE.exists() else ""
+PLEX_URL         = "http://localhost:32400"
+PLEX_LIBRARY_ID  = "2"
+PLEX_MACHINE_ID  = "341172425e0e6f0ff15189aa5ab8d1e0a2acd625"
+
 # ── Optional deps ─────────────────────────────────────────────────────────────
 try:
     import requests
@@ -487,6 +495,43 @@ def patch_html(html, shows, almanac, st):
 
     return html
 
+# ── Plex map ─────────────────────────────────────────────────────────────────
+
+def get_plex_map():
+    """Return {folder_name: plex_web_url} for all albums in Music library.
+    Returns {} silently if Plex is unavailable or token not configured."""
+    if not PLEX_TOKEN:
+        print("⚠  Plex token not found (~/.dmb_plex_token) — skipping Plex map.")
+        return {}
+    if not HAS_NET:
+        return {}
+    url = f"{PLEX_URL}/library/sections/{PLEX_LIBRARY_ID}/all?type=9"
+    try:
+        resp = requests.get(url, headers={"X-Plex-Token": PLEX_TOKEN}, timeout=10)
+        resp.raise_for_status()
+    except Exception as e:
+        print(f"⚠  Plex unreachable: {e}")
+        return {}
+    plex_map = {}
+    try:
+        data = resp.json()
+        for album in data.get("MediaContainer", {}).get("Metadata", []):
+            title      = album.get("title", "")
+            rating_key = album.get("ratingKey", "")
+            if title and rating_key:
+                from urllib.parse import quote
+                key_path = f"/library/metadata/{rating_key}"
+                web_url  = (
+                    f"https://app.plex.tv/desktop/#!/server/{PLEX_MACHINE_ID}"
+                    f"/details?key={quote(key_path, safe='')}"
+                )
+                plex_map[title] = web_url
+    except Exception as e:
+        print(f"⚠  Plex JSON parse error: {e}")
+        return {}
+    print(f"  → Plex: {len(plex_map):,} albums indexed")
+    return plex_map
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
@@ -567,6 +612,15 @@ def main():
             f'DMB Collection Dashboard &nbsp;·&nbsp; last run {run_ts}',
             1
         )
+
+    # ── Inject live Plex map ──
+    print(f"\n🎧 Querying Plex…")
+    plex_map = get_plex_map()
+    updated_html = updated_html.replace(
+        'const PLEX_MAP={};',
+        f'const PLEX_MAP={json.dumps(plex_map, ensure_ascii=False)};',
+        1
+    )
 
     HTML_FILE.write_text(updated_html, encoding='utf-8')
 
