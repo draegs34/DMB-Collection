@@ -349,6 +349,11 @@ body.dark .notif-gap { background:#0d3020; border-color:#1a5030; }
     <h2>Recordings by year</h2>
     <div class="chart-hint">Click a bar to browse that year's recordings</div>
     <div style="position:relative;overflow:hidden;height:200px"><canvas id="yearChart" role="img" aria-label="Bar chart of recordings by year, click to filter browser">Peaks in 2009–2010.</canvas></div>
+  
+
+  <div class="chart-card" style="margin-top:16px">
+    <h2>Recently Added</h2>
+    <div id="recentList" style="display:flex;flex-direction:column;gap:12px;margin-top:8px"></div>
   </div>
 
   <div class="row2">
@@ -394,9 +399,9 @@ body.dark .notif-gap { background:#0d3020; border-color:#1a5030; }
     <select id="yearSel"><option value="">All years</option></select>
     <select id="fmtSel"><option value="">All formats</option></select>
     <select id="srcSel"><option value="">All sources</option></select>
-    <label><input type="checkbox" id="notesOnly"> Has notes</label>
     <label><input type="checkbox" id="multiOnly"> Multiple recordings</label>
-    <label><input type="checkbox" id="havOnly"> In almanac</label>
+    <label><input type="checkbox" id="havOnly"> DMBAlmanac listing</label>
+    <label><input type="checkbox" id="plexOnly"> Plex</label>
     <button class="clear-btn" onclick="clearFilters()">Clear all</button>
   </div>
   <div class="sort-bar">
@@ -495,9 +500,9 @@ function goToBrowser(opts){
   if(opts.format!==undefined){fS.value=opts.format||'';}
   if(opts.src!==undefined){sS.value=opts.src||'';}
   if(opts.search!==undefined){document.getElementById('search').value=opts.search||'';}
-  document.getElementById('notesOnly').checked=false;
   document.getElementById('multiOnly').checked=false;
   document.getElementById('havOnly').checked=false;
+  document.getElementById('plexOnly').checked=false;
   showTab('browser',document.getElementById('browserTab'));
   render();
 }
@@ -580,9 +585,9 @@ function goToEra(yearsStr){
   eraYearFilter=new Set(yearsStr.split(','));
   yS.value=''; fS.value=''; sS.value='';
   document.getElementById('search').value='';
-  document.getElementById('notesOnly').checked=false;
   document.getElementById('multiOnly').checked=false;
   document.getElementById('havOnly').checked=false;
+  document.getElementById('plexOnly').checked=false;
   showTab('browser',document.getElementById('browserTab'));
   render();
 }
@@ -647,7 +652,6 @@ const bitChart=new Chart(document.getElementById('bitChart'),{
         bitDepthFilter=bit;
         yS.value='';fS.value='FLAC';sS.value='';
         document.getElementById('search').value='';
-        document.getElementById('notesOnly').checked=false;
         document.getElementById('multiOnly').checked=false;
         document.getElementById('havOnly').checked=false;
         eraYearFilter=null;
@@ -687,18 +691,18 @@ function clearChip(i){document.getElementById('activeFilters')._chips[i].clear()
 function getFiltered(){
   const q=document.getElementById('search').value.toLowerCase().trim();
   const yr=yS.value,fmt=fS.value,src=sS.value;
-  const notesOnly=document.getElementById('notesOnly').checked;
   const multiOnly=document.getElementById('multiOnly').checked;
   const havOnly=document.getElementById('havOnly').checked;
+  const plexOnly=document.getElementById('plexOnly').checked;
   return SHOWS.filter(s=>{
     if(yr&&s[1]!==yr)return false;
     if(!yr&&eraYearFilter&&!eraYearFilter.has(s[1]))return false;
     if(fmt&&s[2]!==fmt)return false;
     if(bitDepthFilter&&(s[2]!=='FLAC'||s[3]!==bitDepthFilter))return false;
     if(src&&s[4]!==src)return false;
-    if(notesOnly&&!s[9])return false;
     if(multiOnly&&(dateCounts[s[0]]||0)<2)return false;
     if(havOnly&&!ALMANAC[s[0]])return false;
+    if(plexOnly&&!PLEX_MAP[s[11]])return false;
     if(q){
       const alm=ALMANAC[s[0]];
       const hay=(s[11]+' '+s[0]+' '+s[10]+' '+s[4]+' '+s[2]+(alm?' '+alm.venue+' '+alm.city:'')).toLowerCase();
@@ -766,9 +770,9 @@ function toggle(row,id){
 function clearFilters(){
   document.getElementById('search').value='';
   yS.value='';fS.value='';sS.value='';
-  document.getElementById('notesOnly').checked=false;
   document.getElementById('multiOnly').checked=false;
   document.getElementById('havOnly').checked=false;
+  document.getElementById('plexOnly').checked=false;
   eraYearFilter=null;
   bitDepthFilter=null;
   render();
@@ -778,9 +782,32 @@ document.getElementById('search').addEventListener('input',render);
 yS.addEventListener('change',()=>{eraYearFilter=null;render();});
 fS.addEventListener('change',()=>{bitDepthFilter=null;render();});
 sS.addEventListener('change',render);
-document.getElementById('notesOnly').addEventListener('change',render);
 document.getElementById('multiOnly').addEventListener('change',render);
 document.getElementById('havOnly').addEventListener('change',render);
+document.getElementById('plexOnly').addEventListener('change',render);
+// ── Recently Added ────────────────────────────────────────────────────────────
+(function(){
+  const el=document.getElementById('recentList');
+  if(!el)return;
+  const seen=new Set(),recent=[];
+  for(let i=SHOWS.length-1;i>=0&&recent.length<5;i--){
+    const s=SHOWS[i];
+    if(s[0]&&!seen.has(s[0])){seen.add(s[0]);recent.push(s);}
+  }
+  el.innerHTML=recent.map(s=>{
+    const alm=ALMANAC[s[0]];
+    const plexUrl=PLEX_MAP[s[11]];
+    const links=[];
+    if(alm)links.push(`<a href="${alm.url}" target="_blank" style="color:#378ADD;text-decoration:none">DMBAlmanac →</a>`);
+    if(plexUrl)links.push(`<a href="${plexUrl}" target="_blank" style="color:#378ADD;text-decoration:none">Listen in Plex →</a>`);
+    return `<div style="border-left:3px solid #378ADD;padding:6px 0 6px 12px">
+      <div style="font-weight:600;font-size:14px">${s[0]} &nbsp;<span style="font-weight:400;color:#888;font-size:13px">${s[11]}</span></div>
+      ${alm?`<div style="font-size:12px;color:#888;margin-top:2px">${alm.venue}, ${alm.city}</div>`:''}
+      ${links.length?`<div style="font-size:12px;margin-top:4px;display:flex;gap:14px">${links.join('')}</div>`:''}
+    </div>`;
+  }).join('');
+})();
+
 document.querySelectorAll('.sort-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));
