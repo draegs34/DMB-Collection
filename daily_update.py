@@ -34,6 +34,9 @@ PLEX_URL         = "http://localhost:32400"
 PLEX_LIBRARY_ID  = "2"
 PLEX_MACHINE_ID  = "341172425e0e6f0ff15189aa5ab8d1e0a2acd625"
 
+# ── Attended shows ────────────────────────────────────────────────────────────
+MEMBER_SHOWS_URL = "https://dmbalmanac.com/myalmanac/MyShows.aspx?number=1551"
+
 # ── Optional deps ─────────────────────────────────────────────────────────────
 try:
     import requests
@@ -357,11 +360,12 @@ def calc_stats(shows, almanac):
     else:
         recent_label = ''
 
-    # Year chart — count shows per year, sorted
+    # Year chart — count shows per 4-digit year only (skip special folders)
     year_counts = {}
     for s in shows:
         yr = s[1]
-        if yr: year_counts[yr] = year_counts.get(yr, 0) + 1
+        if yr and re.match(r'^\d{4}$', yr):
+            year_counts[yr] = year_counts.get(yr, 0) + 1
     year_labels  = sorted(year_counts.keys())
     year_vals    = [year_counts[y] for y in year_labels]
     year_short   = [y[-2:] for y in year_labels]
@@ -471,7 +475,7 @@ def patch_html(html, shows, almanac, st):
         html, flags=re.DOTALL
     )
     html = re.sub(
-        r'const yearVals=\[[\d,]+\]',
+        r'const yearVals=\[[^\]]*\]',
         f"const yearVals={json.dumps(st['year_vals'])}",
         html
     )
@@ -498,6 +502,32 @@ def patch_html(html, shows, almanac, st):
     )
 
     return html
+
+# ── Attended shows ────────────────────────────────────────────────────────────
+
+def scrape_attended():
+    """Return sorted list of YYYY-MM-DD dates James attended (member #1551)."""
+    if not HAS_NET:
+        return []
+    try:
+        resp = requests.get(MEMBER_SHOWS_URL, headers=HEADERS, timeout=15)
+        resp.raise_for_status()
+    except Exception as e:
+        print(f"⚠  Could not fetch attended shows: {e}")
+        return []
+    # Dates appear as MM.DD.YY in the page
+    seen, result = set(), []
+    for mm, dd, yy in re.findall(r'(\d{2})\.(\d{2})\.(\d{2})', resp.text):
+        yr = int(yy)
+        year = 2000 + yr if yr <= 30 else 1900 + yr
+        date_str = f"{year}-{mm}-{dd}"
+        if date_str not in seen:
+            seen.add(date_str)
+            result.append(date_str)
+    result.sort()
+    print(f"  → Attended: {len(result)} show date(s) scraped")
+    return result
+
 
 # ── Plex map ─────────────────────────────────────────────────────────────────
 
@@ -597,11 +627,9 @@ def main():
     run_ts = datetime.now().strftime('%Y-%m-%d %H:%M')
     data_changed = bool(new_shows or new_alm_count)
 
-    if data_changed:
-        print(f"\n✍  Patching {HTML_FILE.name}…")
-        updated_html = patch_html(html, shows, almanac, stats)
-    else:
-        updated_html = html
+    # Always patch stats/charts so year chart stays current even on quiet days
+    print(f"\n✍  Patching {HTML_FILE.name}…")
+    updated_html = patch_html(html, shows, almanac, stats)
 
     # Always update the "last run" timestamp in the footer
     if 'last run' in updated_html:
@@ -617,22 +645,34 @@ def main():
             1
         )
 
-    # ── Inject live Plex map ──
+    # ── Inject live Plex map (slice replacement so it refreshes every run) ──
     print(f"\n🎧 Querying Plex…")
     plex_map = get_plex_map()
-    updated_html = updated_html.replace(
-        'const PLEX_MAP={};',
-        f'const PLEX_MAP={json.dumps(plex_map, ensure_ascii=False)};',
-        1
-    )
+    pm_marker = 'const PLEX_MAP='
+    pm_start = updated_html.find(pm_marker) + len(pm_marker)
+    pm_end   = updated_html.find(';\nconst ATTENDED_DATES=', pm_start)
+    if pm_end == -1:
+        pm_end = updated_html.find(';\n\nconst dateCounts=', pm_start)
+    updated_html = updated_html[:pm_start] + json.dumps(plex_map, ensure_ascii=False) + updated_html[pm_end:]
+
+    # ── Inject attended dates (slice replacement) ──────────────────────────────
+    print(f"\n🎟  Scraping attended shows…")
+    attended = scrape_attended()
+    ad_marker = 'const ATTENDED_DATES=new Set('
+    ad_start  = updated_html.find(ad_marker) + len(ad_marker)
+    ad_end    = updated_html.find(');\n\nconst dateCounts=', ad_start)
+    if ad_end != -1:
+        updated_html = updated_html[:ad_start] + json.dumps(attended) + updated_html[ad_end:]
+    else:
+        print("⚠  ATTENDED_DATES end-marker not found — skipping injection")
 
     HTML_FILE.write_text(updated_html, encoding='utf-8')
 
-    if data_changed:
+    if new_shows:
         print(f"✅ Done — {len(new_shows)} new recording(s), reload to see changes.")
-        git_push(updated_html)
     else:
-        print(f"\n✅ No new data — footer timestamp updated ({run_ts}).")
+        print(f"\n✅ Done — footer and charts updated ({run_ts}).")
+    git_push(updated_html)
 
 # ── GitHub Pages push ─────────────────────────────────────────────────────────
 
