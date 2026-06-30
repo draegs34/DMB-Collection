@@ -81,6 +81,13 @@ select:focus{border-color:#378ADD}
 .expand.show{display:block}
 .expand a{color:#185FA5;text-decoration:none}
 .expand a:hover{text-decoration:underline}
+.rec-row{display:flex;align-items:baseline;gap:8px;padding:5px 0;border-top:1px solid #f0efe7;flex-wrap:wrap}
+.rec-name{font-size:12px;color:#666;font-family:monospace;min-width:180px}
+.rec-badges{display:flex;gap:4px;flex-wrap:wrap}
+.rec-meta{font-size:11px;color:#aaa;white-space:nowrap;margin-left:auto}
+.rec-plex{font-size:11px;color:#378ADD;text-decoration:none}
+.rec-notes{font-size:11px;color:#bbb;width:100%;margin-top:1px;padding-left:2px}
+.expand-head{font-size:12px;margin-bottom:6px;color:#555}
 .no-res{text-align:center;padding:60px;color:#bbb}
 .page-note{text-align:center;padding:14px;color:#bbb;font-size:12px}
 
@@ -163,6 +170,10 @@ body.dark .r-tour{color:#555}
 body.dark .r-meta{color:#555}
 body.dark .expand{border-top-color:#2a2a28;color:#999}
 body.dark .expand a{color:#5fa8e8}
+body.dark .rec-row{border-top-color:#2a2a28}
+body.dark .rec-name{color:#888}
+body.dark .rec-plex{color:#5fa8e8}
+body.dark .expand-head{color:#888}
 body.dark .b-flac{background:#1a3050;color:#7ab8f5}
 body.dark .b-flac24{background:#0d3028;color:#4ecba0}
 body.dark .b-shn{background:#2a2a28;color:#999}
@@ -719,50 +730,80 @@ function getFiltered(){
 
 function render(){
   updateActiveFilters();
-  const filtered=[...getFiltered()].sort((a,b)=>{
-    if(sortKey==='size')return b[7]-a[7];
-    if(sortKey==='files')return b[6]-a[6];
-    return(a[0]||'9999').localeCompare(b[0]||'9999');
-  });
+  const filtered=[...getFiltered()];
   const res=document.getElementById('results');
-  document.getElementById('countLbl').textContent=filtered.length.toLocaleString()+' of '+SHOWS.length.toLocaleString();
-  if(!filtered.length){res.innerHTML='<div class="no-res">No recordings match your filters.</div>';return;}
-  const PAGE=200,vis=filtered.slice(0,PAGE);
-  res.innerHTML=vis.map((s,i)=>{
-    const mc=dateCounts[s[0]]||1;
-    const alm=ALMANAC[s[0]];
-    const note=s[10]?s[10].split('|').filter(p=>p.trim()).slice(0,2).join(' · '):'';
-    const venueHtml=alm
-      ?`<div class="r-venue">${alm.venue}</div><div class="r-city">${alm.city}</div><div class="r-tour">${alm.tour}</div>`
-      :``;
+  const totalDates=Object.keys(dateCounts).length;
+
+  if(!filtered.length){
+    document.getElementById('countLbl').textContent='0 of '+totalDates.toLocaleString()+' dates';
+    res.innerHTML='<div class="no-res">No recordings match your filters.</div>';
+    return;
+  }
+
+  // Group by date
+  const byDate=new Map();
+  filtered.forEach(s=>{
+    const d=s[0]||'?';
+    if(!byDate.has(d))byDate.set(d,[]);
+    byDate.get(d).push(s);
+  });
+
+  document.getElementById('countLbl').textContent=byDate.size.toLocaleString()+' of '+totalDates.toLocaleString()+' dates';
+
+  // Sort dates
+  const dates=[...byDate.keys()].sort((a,b)=>{
+    if(sortKey==='size'){
+      return byDate.get(b).reduce((t,s)=>t+s[7],0)-byDate.get(a).reduce((t,s)=>t+s[7],0);
+    }
+    if(sortKey==='files'){
+      return byDate.get(b).reduce((t,s)=>t+(s[6]||0),0)-byDate.get(a).reduce((t,s)=>t+(s[6]||0),0);
+    }
+    return (a||'9999').localeCompare(b||'9999');
+  });
+
+  const PAGE=200,visDates=dates.slice(0,PAGE);
+
+  res.innerHTML=visDates.map((date,i)=>{
+    const recs=byDate.get(date);
+    const alm=ALMANAC[date];
+    const hasPlex=recs.some(s=>PLEX_MAP[s[11]]);
+    const totSize=recs.reduce((t,s)=>t+s[7],0);
+
+    const recRows=recs.map(s=>{
+      const plexUrl=PLEX_MAP[s[11]];
+      const notes=s[10]?s[10].split('|').filter(p=>p.trim()).join(' · '):'';
+      return `<div class="rec-row">
+        <div class="rec-name">${s[11]}</div>
+        <div class="rec-badges">${fmtBadge(s[2],s[3])}${s[4]?`<span class="badge b-src">${s[4]}</span>`:''}</div>
+        <div class="rec-meta">${sizeFmt(s[7])}${s[6]?' · '+s[6]+' files':''}${s[8]?' · '+Math.round(s[8])+'m':''}</div>
+        ${plexUrl?`<a class="rec-plex" href="${plexUrl}" target="_blank" onclick="event.stopPropagation()">Listen in Plex →</a>`:''}
+        ${notes?`<div class="rec-notes">${notes}</div>`:''}
+        ${s[5]?`<div class="rec-notes" style="color:#bbb">Taper: ${s[5]}</div>`:''}
+      </div>`;
+    }).join('');
+
     return `<div class="r" onclick="toggle(this,'ex${i}')">
       <div class="r-left">
-        <div class="r-date">${s[0]||'?'}</div>
-        <div class="r-name">${s[11]}</div>
+        <div class="r-date">${date||'?'}</div>
       </div>
       <div>
-        ${venueHtml}
-        <div class="badges">
-          ${fmtBadge(s[2],s[3])}
-          ${s[4]?`<span class="badge b-src">${s[4]}</span>`:''}
-          ${mc>1?`<span class="badge b-multi">+${mc-1} more</span>`:''}
-          ${alm?'<span class="badge b-have">✓ almanac</span>':''}
-          ${PLEX_MAP[s[11]]?`<a class="badge b-plex" href="${PLEX_MAP[s[11]]}" target="_blank">▶ Plex</a>`:''}
-          ${ATTENDED_DATES.has(s[0])?'<span class="badge b-att">★ attended</span>':''}
+        ${alm?`<div class="r-venue">${alm.venue}</div><div class="r-city">${alm.city}</div>`:''}
+        <div class="badges" style="margin-top:4px">
+          ${recs.length>1?`<span class="badge b-multi">${recs.length} recordings</span>`:''}
+          ${alm?`<a class="badge b-have" href="${alm.url}" target="_blank" onclick="event.stopPropagation()">✓ almanac</a>`:''}
+          ${hasPlex?`<span class="badge b-plex">▶ Plex</span>`:''}
+          ${ATTENDED_DATES.has(date)?'<span class="badge b-att">★ attended</span>':''}
         </div>
-        ${note?`<div style="font-size:11px;color:#bbb;margin-top:3px">${note}</div>`:''}
       </div>
-      <div class="r-meta">${sizeFmt(s[7])}${s[6]?'<br>'+s[6]+' files':''}${s[8]?'<br>'+Math.round(s[8])+'m':''}</div>
-      <div class="expand" id="ex${i}">
-        ${alm?`<strong>Venue:</strong> ${alm.venue}, ${alm.city}<br><strong>Tour:</strong> ${alm.tour}<br><a href="${alm.url}" target="_blank">View setlist on DMB Almanac →</a><br>`:''}
-        ${s[10]?`<strong>Notes:</strong> ${s[10]}<br>`:''}
-        ${s[5]?`<strong>Taper/source:</strong> ${s[5]}<br>`:''}
-        ${mc>1?`<strong>${mc} recordings</strong> exist for this date in your collection.`:''}
-        ${PLEX_MAP[s[11]]?`<a href="${PLEX_MAP[s[11]]}" target="_blank">Listen in Plex →</a><br>`:''}
+      <div class="r-meta">${sizeFmt(totSize)}${recs.length>1?'<br>'+recs.length+' rec':''}</div>
+      <div class="expand" id="ex${i}" onclick="event.stopPropagation()">
+        ${alm?`<div class="expand-head"><a href="${alm.url}" target="_blank">View setlist →</a> &nbsp;·&nbsp; ${alm.tour}</div>`:''}
+        ${recRows}
       </div>
     </div>`;
   }).join('');
-  if(filtered.length>PAGE)res.innerHTML+=`<div class="page-note">Showing first ${PAGE} of ${filtered.length.toLocaleString()} — refine filters to narrow</div>`;
+
+  if(dates.length>PAGE)res.innerHTML+=`<div class="page-note">Showing first ${PAGE} of ${dates.length.toLocaleString()} dates — refine filters to narrow</div>`;
 }
 
 function toggle(row,id){
