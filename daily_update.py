@@ -533,37 +533,46 @@ def scrape_attended():
 
 def get_plex_map():
     """Return {folder_name: plex_web_url} for all albums in Music library.
-    Returns {} silently if Plex is unavailable or token not configured."""
+    Keys on the show folder name (parent dir of each track file) so it matches
+    s[11] in the SHOWS array. Returns {} if Plex is unavailable."""
     if not PLEX_TOKEN:
         print("⚠  Plex token not found (~/.dmb_plex_token) — skipping Plex map.")
         return {}
     if not HAS_NET:
         return {}
-    url = f"{PLEX_URL}/library/sections/{PLEX_LIBRARY_ID}/all?type=9"
+    from urllib.parse import quote
+    from pathlib import Path as PPath
+    headers = {"X-Plex-Token": PLEX_TOKEN, "Accept": "application/json"}
+    url = f"{PLEX_URL}/library/sections/{PLEX_LIBRARY_ID}/all?type=10"
     try:
-        resp = requests.get(url, headers={"X-Plex-Token": PLEX_TOKEN}, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=120)
         resp.raise_for_status()
     except Exception as e:
         print(f"⚠  Plex unreachable: {e}")
         return {}
     plex_map = {}
     try:
-        data = resp.json()
-        for album in data.get("MediaContainer", {}).get("Metadata", []):
-            title      = album.get("title", "")
-            rating_key = album.get("ratingKey", "")
-            if title and rating_key:
-                from urllib.parse import quote
-                key_path = f"/library/metadata/{rating_key}"
-                web_url  = (
+        tracks = resp.json().get("MediaContainer", {}).get("Metadata", [])
+        print(f"  → Plex: {len(tracks):,} tracks found")
+        for track in tracks:
+            parent_key = track.get("parentRatingKey", "")
+            if not parent_key:
+                continue
+            try:
+                file_path = track["Media"][0]["Part"][0]["file"]
+            except (KeyError, IndexError):
+                continue
+            folder = PPath(file_path).parent.name
+            if folder and folder not in plex_map:
+                key_path = f"/library/metadata/{parent_key}"
+                plex_map[folder] = (
                     f"https://app.plex.tv/desktop/#!/server/{PLEX_MACHINE_ID}"
                     f"/details?key={quote(key_path, safe='')}"
                 )
-                plex_map[title] = web_url
     except Exception as e:
         print(f"⚠  Plex JSON parse error: {e}")
         return {}
-    print(f"  → Plex: {len(plex_map):,} albums indexed")
+    print(f"  → PLEX_MAP: {len(plex_map):,} folders indexed")
     return plex_map
 
 # ── Main ─────────────────────────────────────────────────────────────────────
