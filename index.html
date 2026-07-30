@@ -325,6 +325,12 @@ body.dark .notif-gap { background:#0d3020; border-color:#1a5030; }
                cursor:pointer; font-size:16px; line-height:1;
                padding:0; flex-shrink:0; }
 .notif-close:hover { opacity:1; }
+.notif-header { pointer-events:all; display:flex; justify-content:space-between;
+                align-items:center; padding:4px 2px; }
+.notif-count  { font-size:11px; color:#999; }
+.notif-clear-all { background:none; border:none; font-size:11px; color:#888;
+                   cursor:pointer; padding:2px 4px; border-radius:4px; }
+.notif-clear-all:hover { color:#fff; background:rgba(255,255,255,0.15); }
 @media (max-width:700px) {
   #notif-container { left:8px; right:8px; max-width:none; top:50px; }
 }
@@ -1181,9 +1187,33 @@ function toggleDark() {
     container.appendChild(notif);
   });
 
+  // Header: count + dismiss all button
+  var header = document.createElement('div');
+  header.className = 'notif-header';
+  header.innerHTML =
+    '<span class="notif-count">' + newShows.length + ' notification' + (newShows.length > 1 ? 's' : '') + '</span>' +
+    '<button class="notif-clear-all" onclick="dismissAllNotifs()">Dismiss all</button>';
+  container.insertBefore(header, container.firstChild);
+
   // Insert after nav so it's in the right stacking context
   document.body.appendChild(container);
 })();
+
+function dismissAllNotifs() {
+  var c = document.getElementById('notif-container');
+  if (!c) return;
+  var notifs = c.querySelectorAll('.notif');
+  notifs.forEach(function(n){ n.style.opacity = '0'; });
+  setTimeout(function() {
+    try {
+      var folders = Array.from(notifs).map(function(n){ return n.dataset.folder; }).filter(Boolean);
+      var d = JSON.parse(localStorage.getItem('dmb-dismissed-notifs') || '[]');
+      d = d.concat(folders);
+      localStorage.setItem('dmb-dismissed-notifs', JSON.stringify(d));
+    } catch(e) {}
+    c.remove();
+  }, 220);
+}
 
 function dismissNotif(notif) {
   notif.style.opacity = '0';
