@@ -577,11 +577,28 @@ def get_plex_map():
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
+# ── GitHub sync ───────────────────────────────────────────────────────────────
+
+def git_pull():
+    """Pull the latest from GitHub before patching, so page edits made on
+    another computer are kept instead of overwritten."""
+    result = subprocess.run(
+        ['git', '-C', str(DASHBOARD_DIR), 'pull', '--rebase', '--autostash'],
+        capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"⚠  git pull failed — stopping so nothing gets overwritten:\n"
+              f"{(result.stderr or result.stdout).strip()}")
+        sys.exit(1)
+    print(f"  GitHub: {result.stdout.strip().splitlines()[-1] if result.stdout.strip() else 'up to date'}\n")
+
 def main():
     print(f"🎵 DMB Daily Update — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     print(f"   Collection:  {COLLECTION_ROOT}")
     print(f"   Dashboard:   {HTML_FILE}")
     print(f"   Target year: {CURRENT_YEAR}\n")
+
+    # Get any page edits pushed from other computers
+    git_pull()
 
     # Load existing data
     html    = load_html()
