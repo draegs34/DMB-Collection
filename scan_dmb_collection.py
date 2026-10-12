@@ -18,7 +18,7 @@ import re
 import csv
 import sys
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, date as _date_cls
 
 # Try to import mutagen for audio duration — optional
 try:
@@ -111,7 +111,85 @@ def parse_folder_name(folder_name):
         _parse_rest(rest, result, separator='-')
         return result
 
+    # Fallback: any other naming style (d+t…, tr3…, '1999.02.05 - Venue', 'Paris 02.05.2024', …)
+    found = find_date_in_name(folder_name)
+    if found:
+        y, mo, d, rest = found
+        result['year'], result['month'], result['day'] = y, mo, d
+        result['date'] = f"{y}-{mo:02d}-{d:02d}"
+        _parse_rest(rest, result)
+        return result
+
     return result  # unrecognized — still return partial
+
+
+# ── Flexible date finder (fallback when the strict patterns above don't match) ──
+_MONTHS = {m: i for i, m in enumerate(
+    ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'], 1)}
+_MAX_YEAR = datetime.now().year + 1
+
+def _valid_date(y, m, d):
+    try:
+        return 1989 <= y <= _MAX_YEAR and bool(_date_cls(y, m, d))
+    except ValueError:
+        return False
+
+def _yy(s):
+    """Expand a 2- or 4-digit year string."""
+    y = int(s)
+    if len(s) == 4:
+        return y
+    return 1900 + y if y >= 89 else 2000 + y
+
+_MON_RX = r'(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*'
+# (regex, converter -> (year, month, day)); tried in order, first valid date wins
+_FALLBACK_DATE_RES = [
+    # TR3 folders: tr32008-07-03...
+    (re.compile(r'^tr3(\d{4})-(\d{2})-(\d{2})(?!\d)', re.I),
+     lambda m: (int(m[1]), int(m[2]), int(m[3]))),
+    # ISO-ish anywhere: d+t1999-02-05, 1999.02.05 - ..., dmb2014-6-10, 2022_06_06, 2026/01/22
+    (re.compile(r'(?<!\d)(19[89]\d|20[0-4]\d)[-._/ ](\d{1,2})[-._/ ](\d{1,2})(?!\d)'),
+     lambda m: (int(m[1]), int(m[2]), int(m[3]))),
+    # Compact YYYYMMDD: dmb20070802.mk4..., 20250823_DMB_...
+    (re.compile(r'(?<!\d)(19[89]\d|20[0-4]\d)(\d{2})(\d{2})(?!\d)'),
+     lambda m: (int(m[1]), int(m[2]), int(m[3]))),
+    # Short-year typos right after a prefix: dmb021-07-31 -> 2021, dmb205-10-24 -> 2005
+    (re.compile(r'^[A-Za-z+&]+(0\d{2}|20\d)-(\d{2})-(\d{2})(?!\d)'),
+     lambda m: ((2000 + int(m[1])) if m[1].startswith('0') else (2000 + int(m[1][2])), int(m[2]), int(m[3]))),
+    # Compact MMDDYYYY: dmb06062022_..., dmb 05202022 ...
+    (re.compile(r'(?<!\d)(\d{2})(\d{2})(19[89]\d|20[0-4]\d)(?!\d)'),
+     lambda m: (int(m[3]), int(m[1]), int(m[2]))),
+    # US style M-D-Y: 07-15-1999, 9/21/2021, 11.12.21, 6.20.25, SJCA-12-3-94
+    (re.compile(r'(?<![\d./])(\d{1,2})[-./](\d{1,2})[-./](\d{4}|\d{2})(?![\d./-])'),
+     lambda m: (_yy(m[3]), int(m[1]), int(m[2]))),
+    # European D.M.Y when US order is impossible: Dublin 27.04.2024
+    (re.compile(r'(?<![\d./])(\d{1,2})[-./](\d{1,2})[-./](\d{4}|\d{2})(?![\d./-])'),
+     lambda m: (_yy(m[3]), int(m[2]), int(m[1]))),
+    # December 7, 2012 / May 25th 2012
+    (re.compile(r'\b' + _MON_RX + r'\.? (\d{1,2})(?:st|nd|rd|th)?,? (\d{4})\b', re.I),
+     lambda m: (int(m[3]), _MONTHS[m[1][:3].lower()], int(m[2]))),
+    # 20APR2019 / Boston 4 Feb 1995
+    (re.compile(r'(?<!\d)(\d{1,2}) ?' + _MON_RX + r' ?(\d{4})(?!\d)', re.I),
+     lambda m: (int(m[3]), _MONTHS[m[2][:3].lower()], int(m[1]))),
+]
+
+def find_date_in_name(name, known_dates=None):
+    """Best-effort show date from any folder-name style.
+    Returns (year, month, day, rest) or None. When known_dates (a set of
+    'YYYY-MM-DD' strings, e.g. the almanac) is given, an ambiguous name like
+    'Paris 02.05.2024' resolves to the reading that is a real show date."""
+    first = None
+    for rx, conv in _FALLBACK_DATE_RES:
+        for m in rx.finditer(name):
+            y, mo, d = conv(m)
+            if not _valid_date(y, mo, d):
+                continue
+            cand = (y, mo, d, name[m.end():].lstrip('._- '))
+            if not known_dates or f"{y}-{mo:02d}-{d:02d}" in known_dates:
+                return cand
+            if first is None:
+                first = cand
+    return first
 
 
 def _parse_rest(rest, result, separator='.'):

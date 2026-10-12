@@ -11,7 +11,7 @@ Deps:    pip3 install requests beautifulsoup4 mutagen
 
 import re, json, time, sys, os, subprocess
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, date as _date_cls
 from calendar import month_name
 
 # ── Config ───────────────────────────────────────────────────────────────────
@@ -111,7 +111,7 @@ def _parse_rest(rest, result):
     if tag_parts:    result['tags']   = tag_parts
     if venue_parts:  result['venue_hint'] = ' '.join(venue_parts)
 
-def parse_folder_name(name):
+def parse_folder_name(name, known_dates=None):
     result = {'date':None,'year':None,'month':None,'day':None,
               'source':None,'source_type':None,'format':None,'bit_depth':None,
               'venue_hint':None,'tags':[],'raw_name':name}
@@ -132,7 +132,101 @@ def parse_folder_name(name):
         result['date']  = f"{result['year']}-{result['month']:02d}-{result['day']:02d}"
         _parse_rest(m.group('rest') or '', result)
         return result
+    # Fallback: any other naming style (d+t…, tr3…, '1999.02.05 - Venue', 'Paris 02.05.2024', …)
+    found = find_date_in_name(name, known_dates)
+    if found:
+        y, mo, d, rest = found
+        result['year'], result['month'], result['day'] = y, mo, d
+        result['date'] = f"{y}-{mo:02d}-{d:02d}"
+        _parse_rest(rest, result)
     return result
+
+# ── Flexible date finder (fallback when the strict patterns above don't match) ──
+_MONTHS = {m: i for i, m in enumerate(
+    ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'], 1)}
+_MAX_YEAR = datetime.now().year + 1
+
+def _valid_date(y, m, d):
+    try:
+        return 1989 <= y <= _MAX_YEAR and bool(_date_cls(y, m, d))
+    except ValueError:
+        return False
+
+def _yy(s):
+    """Expand a 2- or 4-digit year string."""
+    y = int(s)
+    if len(s) == 4:
+        return y
+    return 1900 + y if y >= 89 else 2000 + y
+
+_MON_RX = r'(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*'
+# (regex, converter -> (year, month, day)); tried in order, first valid date wins
+_FALLBACK_DATE_RES = [
+    # TR3 folders: tr32008-07-03...
+    (re.compile(r'^tr3(\d{4})-(\d{2})-(\d{2})(?!\d)', re.I),
+     lambda m: (int(m[1]), int(m[2]), int(m[3]))),
+    # ISO-ish anywhere: d+t1999-02-05, 1999.02.05 - ..., dmb2014-6-10, 2022_06_06, 2026/01/22
+    (re.compile(r'(?<!\d)(19[89]\d|20[0-4]\d)[-._/ ](\d{1,2})[-._/ ](\d{1,2})(?!\d)'),
+     lambda m: (int(m[1]), int(m[2]), int(m[3]))),
+    # Compact YYYYMMDD: dmb20070802.mk4..., 20250823_DMB_...
+    (re.compile(r'(?<!\d)(19[89]\d|20[0-4]\d)(\d{2})(\d{2})(?!\d)'),
+     lambda m: (int(m[1]), int(m[2]), int(m[3]))),
+    # Short-year typos right after a prefix: dmb021-07-31 -> 2021, dmb205-10-24 -> 2005
+    (re.compile(r'^[A-Za-z+&]+(0\d{2}|20\d)-(\d{2})-(\d{2})(?!\d)'),
+     lambda m: ((2000 + int(m[1])) if m[1].startswith('0') else (2000 + int(m[1][2])), int(m[2]), int(m[3]))),
+    # Compact MMDDYYYY: dmb06062022_..., dmb 05202022 ...
+    (re.compile(r'(?<!\d)(\d{2})(\d{2})(19[89]\d|20[0-4]\d)(?!\d)'),
+     lambda m: (int(m[3]), int(m[1]), int(m[2]))),
+    # US style M-D-Y: 07-15-1999, 9/21/2021, 11.12.21, 6.20.25, SJCA-12-3-94
+    (re.compile(r'(?<![\d./])(\d{1,2})[-./](\d{1,2})[-./](\d{4}|\d{2})(?![\d./-])'),
+     lambda m: (_yy(m[3]), int(m[1]), int(m[2]))),
+    # European D.M.Y when US order is impossible: Dublin 27.04.2024
+    (re.compile(r'(?<![\d./])(\d{1,2})[-./](\d{1,2})[-./](\d{4}|\d{2})(?![\d./-])'),
+     lambda m: (_yy(m[3]), int(m[2]), int(m[1]))),
+    # December 7, 2012 / May 25th 2012
+    (re.compile(r'\b' + _MON_RX + r'\.? (\d{1,2})(?:st|nd|rd|th)?,? (\d{4})\b', re.I),
+     lambda m: (int(m[3]), _MONTHS[m[1][:3].lower()], int(m[2]))),
+    # 20APR2019 / Boston 4 Feb 1995
+    (re.compile(r'(?<!\d)(\d{1,2}) ?' + _MON_RX + r' ?(\d{4})(?!\d)', re.I),
+     lambda m: (int(m[3]), _MONTHS[m[2][:3].lower()], int(m[1]))),
+]
+
+def find_date_in_name(name, known_dates=None):
+    """Best-effort show date from any folder-name style.
+    Returns (year, month, day, rest) or None. When known_dates (a set of
+    'YYYY-MM-DD' strings, e.g. the almanac) is given, an ambiguous name like
+    'Paris 02.05.2024' resolves to the reading that is a real show date."""
+    first = None
+    for rx, conv in _FALLBACK_DATE_RES:
+        for m in rx.finditer(name):
+            y, mo, d = conv(m)
+            if not _valid_date(y, mo, d):
+                continue
+            cand = (y, mo, d, name[m.end():].lstrip('._- '))
+            if not known_dates or f"{y}-{mo:02d}-{d:02d}" in known_dates:
+                return cand
+            if first is None:
+                first = cand
+    return first
+
+def backfill_undated(shows, known_dates=None):
+    """Fill in dates (and blank format/source fields) for SHOWS entries whose
+    folder name the parser couldn't read when they were first added."""
+    filled = 0
+    for s in shows:
+        if s[0]:
+            continue
+        p = parse_folder_name(s[11], known_dates)
+        if not p['date']:
+            continue
+        s[0] = p['date']
+        if not s[2] and p['format']:      s[2] = p['format']
+        if not s[3] and p['bit_depth']:   s[3] = str(p['bit_depth'])
+        if not s[4] and p['source_type']: s[4] = p['source_type']
+        if not s[5] and p['source']:      s[5] = p['source']
+        if not s[13] and p['tags']:       s[13] = ', '.join(p['tags'])
+        filled += 1
+    return filled
 
 def inspect_folder(folder_path):
     audio_files, text_files = [], []
@@ -192,7 +286,7 @@ def extract_almanac(html):
 
 # ── Part 2: Scan CURRENT_YEAR recording folder ────────────────────────────────
 
-def scan_year(year_str, existing_folders):
+def scan_year(year_str, existing_folders, known_dates=None):
     """Return new SHOWS-format entries for recording folders not yet in the HTML."""
     year_dir = COLLECTION_ROOT / year_str
     if not year_dir.exists():
@@ -203,7 +297,7 @@ def scan_year(year_str, existing_folders):
     for show_dir in sorted(year_dir.iterdir()):
         if not show_dir.is_dir() or show_dir.name in existing_folders:
             continue
-        parsed    = parse_folder_name(show_dir.name)
+        parsed    = parse_folder_name(show_dir.name, known_dates)
         file_info = inspect_folder(show_dir)
         entry = [
             parsed['date']  or '',
@@ -606,6 +700,12 @@ def main():
     almanac = extract_almanac(html)
     print(f"Loaded: {len(shows)} recordings, {len(almanac)} almanac dates\n")
 
+    # ── Date any existing recordings whose folder names weren't parsed before ──
+    backfilled = backfill_undated(shows, set(almanac))
+    if backfilled:
+        shows.sort(key=lambda s: (s[0], s[11]))
+        print(f"🗓  Backfilled dates for {backfilled} previously undated recording(s)\n")
+
     # ── Scan new local recordings (all years) ──
     print(f"📂 Scanning all year folders…")
     existing_folders = {s[11] for s in shows}
@@ -613,7 +713,7 @@ def main():
     if COLLECTION_ROOT.exists():
         year_dirs = sorted([d for d in COLLECTION_ROOT.iterdir() if d.is_dir()])
         for year_dir in year_dirs:
-            year_new = scan_year(year_dir.name, existing_folders)
+            year_new = scan_year(year_dir.name, existing_folders, set(almanac))
             if year_new:
                 print(f"  {year_dir.name}: {len(year_new)} new")
                 new_shows += year_new
@@ -651,7 +751,7 @@ def main():
 
     # ── Patch and write HTML ──
     run_ts = datetime.now().strftime('%Y-%m-%d %H:%M')
-    data_changed = bool(new_shows or new_alm_count)
+    data_changed = bool(new_shows or new_alm_count or backfilled)
 
     # Always patch stats/charts so year chart stays current even on quiet days
     print(f"\n✍  Patching {HTML_FILE.name}…")
