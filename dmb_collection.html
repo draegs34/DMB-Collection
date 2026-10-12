@@ -334,6 +334,8 @@ body.dark .notif-gap { background:#0d3020; border-color:#1a5030; }
 @media (max-width:700px) {
   #notif-container { left:8px; right:8px; max-width:none; top:50px; }
 }
+
+#exportBtn:hover{background:#e6e5dd} body.dark #exportBtn{background:#2a2a28;border-color:#3a3a38;color:#aaa} body.dark #exportBtn:hover{background:#333330;color:#e8e7e2} @media (max-width: 700px){ #exportBtn{padding:4px 8px;font-size:11px} }
 </style>
 </head>
 <body>
@@ -345,7 +347,8 @@ body.dark .notif-gap { background:#0d3020; border-color:#1a5030; }
   <div class="tab" onclick="showTab('gaps',this)">Gaps <span class="tc" id="gapsCount"></span></div>
   <div class="tab" onclick="showTab('tours',this)">Tours <span class="tc" id="toursCount"></span></div>
   <div class="tab" onclick="showTab('map',this)">Map</div>
-<button id="darkToggle" onclick="toggleDark()" style="margin-left:auto;background:#f0efe7;border:1px solid #d0cfc7;border-radius:6px;padding:5px 11px;font-size:12px;cursor:pointer;color:#555;white-space:nowrap;flex-shrink:0">🌙 Dark</button>
+<button id="exportBtn" onclick="exportCollectionCSV()" title="Download every recording as a spreadsheet (CSV): date, artist, venue, city, state/country" style="margin-left:auto;background:#f0efe7;border:1px solid #d0cfc7;border-radius:6px;padding:5px 11px;font-size:12px;cursor:pointer;color:#555;white-space:nowrap;flex-shrink:0">⬇ Export</button>
+<button id="darkToggle" onclick="toggleDark()" style="margin-left:6px;background:#f0efe7;border:1px solid #d0cfc7;border-radius:6px;padding:5px 11px;font-size:12px;cursor:pointer;color:#555;white-space:nowrap;flex-shrink:0">🌙 Dark</button>
 </nav>
 
 <!-- ═══════════════════════════ DASHBOARD ═══════════════════════════ -->
@@ -1104,6 +1107,141 @@ gapYearSel.addEventListener('change',renderGaps);
 
 
 // ── Dark-mode toggle ─────────────────────────────────────────────────────────
+// ── Collection export (CSV) ──────────────────────────────────────────────────
+// One row per recording: Show Date, Artist, Venue, City, State/Country.
+const EXPORT_PREFIX_ARTIST = {
+  'dmb':'Dave Matthews Band', 'davematthewsband':'Dave Matthews Band',
+  'dm':'Dave Matthews',
+  'd+t':'Dave Matthews & Tim Reynolds', 'd&t':'Dave Matthews & Tim Reynolds',
+  'dt':'Dave Matthews & Tim Reynolds', 'dave&tim':'Dave Matthews & Tim Reynolds',
+  'dmtr':'Dave Matthews & Tim Reynolds',
+  'dm+tr':'Dave Matthews & Tim Reynolds',
+  'dm+f':'Dave Matthews & Friends', 'd+f':'Dave Matthews & Friends',
+  'daveandfriends':'Dave Matthews & Friends',
+  'd+c':'Dave Matthews & Carter Beauford', 'dm+cb':'Dave Matthews & Carter Beauford',
+  'davemathews':'Dave Matthews', 'davematthews':'Dave Matthews',
+  'bfft':'Béla Fleck and the Flecktones', 'agr':'Agents of Good Roots',
+  'soulshine':'Soulshine Benefit Concert', 'soulshinebenefit':'Soulshine Benefit Concert',
+  'roots':'The Roots', 'dead':'Dead & Company', 'dumpstaphunk':'Dumpstaphunk',
+  'tr':'Tim Reynolds', 'tr3':'TR3',
+  'phjb':'Preservation Hall Jazz Band', 'lakestreetdive':'Lake Street Dive',
+  'thelonebellow':'The Lone Bellow', 'theroots':'The Roots',
+  'jcm':"Jeff Coffin Mu'tet", 'sl':'Stefan Lessard', 'cva':'Charlottesville Allstars'
+};
+const EXPORT_MONTHS = ['january','february','march','april','may','june','july',
+  'august','september','october','november','december'];
+
+function exportValidDate(y, m, d) {
+  y = +y; m = +m; d = +d;
+  if (y < 1985 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return '';
+  return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+
+function exportFindDate(text) {
+  if (!text) return '';
+  let m, r;
+  // 2017-04-01, 2012-9-1, 1994.08.28, 2023_08_25
+  m = text.match(/((?:19|20)\d\d)[-._](\d{1,2})[-._](\d{1,2})(?!\d)/);
+  if (m && (r = exportValidDate(m[1], m[2], m[3]))) return r;
+  // 20250823
+  m = text.match(/(?<!\d)((?:19|20)\d\d)(\d\d)(\d\d)(?!\d)/);
+  if (m && (r = exportValidDate(m[1], m[2], m[3]))) return r;
+  // 05202022
+  m = text.match(/(?<!\d)(\d\d)(\d\d)((?:19|20)\d\d)(?!\d)/);
+  if (m && (r = exportValidDate(m[3], m[1], m[2]))) return r;
+  // 07-15-1999, 10.08.2021, 4/9/1993
+  m = text.match(/(?<!\d)(\d{1,2})([-./])(\d{1,2})\2((?:19|20)\d\d)(?!\d)/);
+  if (m && (r = exportValidDate(m[4], m[1], m[3]))) return r;
+  // September 2, 2016 / April 14th, 2009
+  m = text.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+((?:19|20)\d\d)\b/i);
+  if (m && (r = exportValidDate(m[3], EXPORT_MONTHS.indexOf(m[1].toLowerCase()) + 1, m[2]))) return r;
+  // 11.12.21, 4/9/93
+  m = text.match(/(?<!\d)(\d{1,2})([-./])(\d{1,2})\2(\d\d)(?!\d)/);
+  if (m) { const yy = +m[4]; if (r = exportValidDate(yy < 50 ? 2000 + yy : 1900 + yy, m[1], m[3])) return r; }
+  return '';
+}
+
+function exportArtist(folder, notes, alm) {
+  const lower = folder.toLowerCase();
+  const pm = lower.match(/^([a-z&+]+\d?)(?=[\d._-])/) || lower.match(/^([a-z&+]+)(?=[\d._-])/);
+  if (pm) {
+    let p = pm[1];
+    if (!EXPORT_PREFIX_ARTIST[p]) p = p.replace(/\d$/, '');
+    if (EXPORT_PREFIX_ARTIST[p]) return EXPORT_PREFIX_ARTIST[p];
+    var unknownPrefix = true;
+  }
+  const head = folder + ' | ' + (notes || '').split('|')[0];
+  if (/tim reynolds|dave\s*(?:and|&|\+|_)\s*tim\b|\bd\s*[+&]\s*t\b/i.test(head)) return 'Dave Matthews & Tim Reynolds';
+  if (/dave\s+matth?ews\s+band|\bdmb\b/i.test(head)) return 'Dave Matthews Band';
+  if (/dave\s+matth?ews|dave\s+solo|davespeak/i.test(head)) return 'Dave Matthews';
+  if (unknownPrefix) {
+    const first = (notes || '').split('|')[0].trim();
+    return first && first.length < 60 && !/[\d:{\\]/.test(first) ? first : '';
+  }
+  if (alm) {
+    const t = alm.tour || '';
+    if (/Dave and Tim/.test(t)) return 'Dave Matthews & Tim Reynolds';
+    if (/Dave Solo/.test(t)) return 'Dave Matthews';
+    if (!/Guesting|Misc/.test(t)) return 'Dave Matthews Band';
+  }
+  return '';
+}
+
+// ALMANAC holds one show per date, so only trust its venue when the kind of
+// show matches the recording's artist (e.g. not a solo radio spot on a band date).
+function exportVenueMatches(artist, alm, notes) {
+  const t = alm.tour || '';
+  const kind = /Dave and Tim/.test(t) ? 'dt' : /Dave and Friends/.test(t) ? 'friends'
+             : /Dave Solo/.test(t) ? 'solo' : /Guesting/.test(t) ? 'guest'
+             : /Misc|Caravan/.test(t) ? 'misc' : 'band';
+  if (artist === 'Dave Matthews Band') return kind === 'band' || kind === 'misc';
+  if (artist === 'Dave Matthews & Tim Reynolds') return kind === 'dt' || kind === 'misc';
+  if (artist === 'Dave Matthews & Friends') return kind === 'friends' || kind === 'misc';
+  if (/^Dave Matthews/.test(artist)) return kind !== 'band' && kind !== 'dt';
+  // Other acts: only when the recording's notes name the same venue
+  const word = (alm.venue || '').toLowerCase().split(/[^a-z']+/).find(w => w.length > 3 && w !== 'the');
+  return !!word && (notes || '').toLowerCase().includes(word);
+}
+
+function buildExportRows(shows, almanac) {
+  const rows = [], skipped = [];
+  for (const s of shows) {
+    const folder = s[11] || '', notes = s[10] || '';
+    if (!folder || folder.startsWith('.') || /^zzz$/i.test(folder)) continue;
+    let date = s[0] && s[0].length === 10 ? s[0] : '';
+    if (!date) date = exportFindDate(folder) || exportFindDate(notes.split('|').slice(0, 4).join(' | '));
+    if (!date) { skipped.push(folder); continue; }
+    const alm = almanac[date];
+    const artist = exportArtist(folder, notes, alm);
+    let venue = '', city = '', region = '';
+    if (alm && exportVenueMatches(artist, alm, notes)) {
+      venue = alm.venue || '';
+      const c = (alm.city || '').trim();
+      if (c && c !== '[Unknown]') {
+        const i = c.indexOf(',');
+        city = i < 0 ? c : c.slice(0, i).trim();
+        region = i < 0 ? '' : c.slice(i + 1).trim();
+      }
+    }
+    rows.push([date, artist, venue, city, region]);
+  }
+  rows.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+  return { rows, skipped };
+}
+
+function exportCollectionCSV() {
+  const { rows } = buildExportRows(SHOWS, ALMANAC);
+  const esc = v => /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  const lines = [['Show Date', 'Artist', 'Venue', 'City', 'State/Country']]
+    .concat(rows).map(r => r.map(v => esc(String(v))).join(','));
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dmb_collection_' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
 function toggleDark() {
   var isDark = document.body.classList.toggle('dark');
   document.getElementById('darkToggle').textContent = isDark ? '☀ Light' : '🌙 Dark';
