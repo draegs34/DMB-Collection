@@ -637,16 +637,30 @@ def get_plex_map():
     from urllib.parse import quote
     from pathlib import Path as PPath
     headers = {"X-Plex-Token": PLEX_TOKEN, "Accept": "application/json"}
-    url = f"{PLEX_URL}/library/sections/{PLEX_LIBRARY_ID}/all?type=10"
-    try:
-        resp = requests.get(url, headers=headers, timeout=120)
-        resp.raise_for_status()
-    except Exception as e:
-        print(f"⚠  Plex unreachable: {e}")
-        return {}
+    url = f"{PLEX_URL}/library/sections/{PLEX_LIBRARY_ID}/all"
+    # Fetch tracks in pages — one request for the whole library times out.
+    PAGE = 2000
+    tracks, start = [], 0
+    while True:
+        params = {"type": 10,
+                  "X-Plex-Container-Start": start,
+                  "X-Plex-Container-Size": PAGE}
+        try:
+            resp = requests.get(url, headers=headers, params=params, timeout=180)
+            resp.raise_for_status()
+            mc = resp.json().get("MediaContainer", {})
+        except Exception as e:
+            print(f"⚠  Plex unreachable (after {len(tracks):,} tracks): {e}")
+            return {}
+        batch = mc.get("Metadata", []) or []
+        tracks.extend(batch)
+        total = int(mc.get("totalSize", 0) or 0)
+        start += len(batch)
+        if not batch or len(batch) < PAGE or (total and start >= total):
+            break
+        print(f"    …{start:,}{f' of {total:,}' if total else ''} tracks", end="\r", flush=True)
     plex_map = {}
     try:
-        tracks = resp.json().get("MediaContainer", {}).get("Metadata", [])
         print(f"  → Plex: {len(tracks):,} tracks found")
         for track in tracks:
             parent_key = track.get("parentRatingKey", "")
@@ -779,7 +793,11 @@ def main():
     pm_end   = updated_html.find(';\nconst ATTENDED_DATES=', pm_start)
     if pm_end == -1:
         pm_end = updated_html.find(';\n\nconst dateCounts=', pm_start)
-    updated_html = updated_html[:pm_start] + json.dumps(plex_map, ensure_ascii=False) + updated_html[pm_end:]
+    if plex_map:
+        updated_html = updated_html[:pm_start] + json.dumps(plex_map, ensure_ascii=False) + updated_html[pm_end:]
+    else:
+        # Plex failed — keep the links already in the page instead of wiping them
+        print("⚠  Plex map empty — keeping the existing Plex links in the page")
 
     # ── Inject attended dates (slice replacement) ──────────────────────────────
     print(f"\n🎟  Scraping attended shows…")
