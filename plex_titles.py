@@ -150,11 +150,13 @@ JUNK = re.compile(r"\.(flac|shn|wav|mp3|ffp|md5)\b|[0-9a-f]{32}|\bkbps\b|\bkhz\b
                   r"conversion|seeded|recorded by|\bmics?\b|\bdat\b|>\s*cd\b|sbd\s*>|aud\s*>", re.I)
 WORDNUM = {"one": 1, "two": 2, "three": 3, "four": 4, "i": 1, "ii": 2, "iii": 3, "iv": 4}
 
-FOOTNOTE = re.compile(r"\s*[*~$#+&^%@!]+\s*$")
+FOOTNOTE = re.compile(r"[\s\u200b-\u200f\ufeff]*[*~$#+&^%@!]+[\s\u200b-\u200f\ufeff]*$")
 SEGUE    = re.compile(r"\s*(?:-+>|=+>|>+)\s*$")
 
 def clean_title(t):
-    t = t.replace("\t", " ")
+    t = t.replace("\t", " ").replace("\u00a0", " ")
+    t = "".join(ch for ch in t if ch.isprintable())               # hidden control/zero-width chars
+    t = t.replace("\u2217", "*").replace("\uff0a", "*")          # look-alike asterisks
     t = DURATION.sub("", t)
     t = re.sub(r"\s{2,}", " ", t).strip(" |")
     t = re.sub(r"^(?:e|encore)\s*[:\-]\s*", "", t, flags=re.I)      # "E: Christmas Song"
