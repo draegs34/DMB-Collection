@@ -520,17 +520,17 @@ body.dark .bx-ms-clear{color:#5fa8e8;border-bottom-color:#2a2a28}
   .bx-pill{font-size:12px;padding:4px 10px}
   .bx-size{display:inline}
   .bx-acts{grid-area:acts;justify-content:stretch;gap:8px;margin-top:8px}
-  .bx-acts>.bx-ico{height:52px;border-radius:12px}
-  .bx-play{flex:1;background:#185FA5;color:#fff;font-size:16px;font-weight:650}
+  .bx-acts>.bx-ico{height:46px;border-radius:12px}
+  .bx-play{flex:3 1 0;min-width:0;background:#185FA5;color:#fff;font-size:15px;font-weight:650}
   .bx-play:hover{background:#0f4a85}
   .bx-play .lbl{display:inline}
   .bx-play .cnt{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 7px;box-sizing:border-box;border-radius:999px;background:#fff;color:#185FA5;font-size:13px;font-weight:700}
   .bx-play.off{visibility:visible;background:#ecebe5;color:#6b6a64}
-  .bx-set{border:1px solid #c9d9ea;padding:0 14px;background:#fff;font-size:14px;font-weight:600}
+  .bx-set{flex:2 1 0;min-width:0;border:1px solid #c9d9ea;padding:0 10px;background:#fff;font-size:15px;font-weight:600}
   .bx-set .lbl{display:inline}
   .bx-set svg{display:none}
   .bx-set.ghost{display:none}
-  .bx-exp{width:52px;border:1px solid #c9d9ea;background:#fff}
+  .bx-exp{width:46px;flex:none;border:1px solid #c9d9ea;background:#fff}
   .bx-detail{padding:2px 14px 8px;border-top:1px solid #ecebe5;background:#faf9f6}
   .bx-show.att .bx-detail{background:#fffaeb;border-top-color:#efe6c8}
   .bx-recs{border:none;background:none;border-radius:0}
@@ -1034,6 +1034,14 @@ var BX_I={
   x:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>'
 };
 var bxByDate=new Map();
+// Phones/tablets: open recordings in the Plexamp app (listen.plex.tv links hand off to Plexamp)
+var BX_MOBILE=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function bxPlexHref(url){
+  if(!BX_MOBILE||!url)return url;
+  const m=/server\/([0-9a-f]+)\/details\?key=([^&#]+)/i.exec(url);
+  return m?`https://listen.plex.tv/album?source=${m[1]}&key=${m[2]}`:url;
+}
+function bxTgt(){return BX_MOBILE?'':' target="_blank" rel="noopener"';}
 var bxTotalDates=0;
 
 function bxEsc(t){return String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -1073,8 +1081,11 @@ function bxShowHTML(date,recs){
   const where=alm
     ?`<div class="bx-venue">${bxEsc(alm.venue)}</div><div class="bx-city">${bxEsc(alm.city)}${alm.tour?' · '+bxEsc(alm.tour):''}${sizeHTML}</div>`
     :`<div class="bx-venue">${bxEsc(recs[0][11])}</div><div class="bx-city">Not listed on DMBAlmanac${sizeHTML}</div>`;
-  const play=plexN
-    ?`<button type="button" class="bx-ico bx-play" aria-label="${plexN>1?'Choose one of '+plexN+' recordings to play in Plex':'Play in Plex'}"${plexN>1?' aria-haspopup="dialog"':''}>${BX_I.play}<span class="lbl">Play in Plex</span>${plexN>1?`<span class="cnt" aria-hidden="true">${plexN}</span>`:''}</button>`
+  const one=plexN===1?recs.find(s=>PLEX_MAP[s[11]]):null;
+  const play=plexN===1
+    ?`<a class="bx-ico bx-play" href="${bxPlexHref(PLEX_MAP[one[11]])}"${bxTgt()} aria-label="Play in Plex">${BX_I.play}<span class="lbl">Play in Plex</span></a>`
+    :plexN>1
+    ?`<button type="button" class="bx-ico bx-play" aria-label="Choose one of ${plexN} recordings to play in Plex" aria-haspopup="dialog">${BX_I.play}<span class="lbl">Play in Plex</span><span class="cnt" aria-hidden="true">${plexN}</span></button>`
     :`<button type="button" class="bx-ico bx-play off" disabled aria-label="Not in Plex">${BX_I.play}<span class="lbl">Not in Plex</span></button>`;
   const set=alm
     ?`<a class="bx-ico bx-set" href="${alm.url}" target="_blank" rel="noopener" aria-label="Setlist on DMBAlmanac" title="Setlist on DMBAlmanac">${BX_I.list}<span class="lbl">Setlist</span></a>`
@@ -1087,7 +1098,7 @@ function bxShowHTML(date,recs){
       <div class="c-fmt">${f?`<span class="bx-pill ${f.cls}">${f.lab}</span>`:'<span class="bx-pill shn">Not tagged</span>'}</div>
       <div class="c-src"><span class="k">Source: </span>${s[4]?bxEsc(s[4]):none}</div>
       <div class="c-tap"><span class="k">Taper / mic: </span>${s[5]?bxEsc(s[5]):none}</div>
-      <div class="c-play">${url?`<a href="${url}" target="_blank" rel="noopener" aria-label="Play ${bxEsc(s[11])} in Plex">${BX_I.play}<span class="lbl">Plex</span></a>`:''}</div>
+      <div class="c-play">${url?`<a href="${bxPlexHref(url)}"${bxTgt()} aria-label="Play ${bxEsc(s[11])} in Plex">${BX_I.play}<span class="lbl">Plex</span></a>`:''}</div>
       ${notes?`<div class="c-notes" title="Click to show all">${bxEsc(notes)}</div>`:''}
       <div class="c-folder">${bxEsc(s[11])}</div>
     </div>`;
@@ -1164,7 +1175,7 @@ function bxPlay(date,btn){
     recs.map(s=>{
       const f=bxFmt(s);
       const name=s[5]||s[4]||'Recording';
-      return `<a href="${PLEX_MAP[s[11]]}" target="_blank" rel="noopener" onclick="closePicker()"><span class="pc">${BX_I.play}</span><span class="pt"><span class="pl">${f?`<span class="bx-pill ${f.cls}">${f.lab}</span>`:''}${bxEsc(name)}</span><span class="pf">${bxEsc(s[11])}</span></span></a>`;
+      return `<a href="${bxPlexHref(PLEX_MAP[s[11]])}"${bxTgt()} onclick="closePicker()"><span class="pc">${BX_I.play}</span><span class="pt"><span class="pl">${f?`<span class="bx-pill ${f.cls}">${f.lab}</span>`:''}${bxEsc(name)}</span><span class="pf">${bxEsc(s[11])}</span></span></a>`;
     }).join('');
   const mobile=window.matchMedia('(max-width: 700px)').matches;
   p.style.left='';p.style.top='';
@@ -1192,7 +1203,7 @@ document.getElementById('results').addEventListener('click',e=>{
   const show=e.target.closest('.bx-show');
   if(!show)return;
   const play=e.target.closest('.bx-play');
-  if(play){e.stopPropagation();if(!play.disabled)bxPlay(show.dataset.date,play);return;}
+  if(play){e.stopPropagation();if(play.tagName==='A')return;if(!play.disabled)bxPlay(show.dataset.date,play);return;}
   const notes=e.target.closest('.c-notes');
   if(notes){notes.classList.toggle('full');return;}
   if(e.target.closest('a'))return;
@@ -1256,7 +1267,7 @@ document.getElementById('attOnly').addEventListener('change',render);
     const plexUrl=PLEX_MAP[s[11]];
     const links=[];
     if(alm)links.push(`<a href="${alm.url}" target="_blank" style="color:#378ADD;text-decoration:none">DMBAlmanac →</a>`);
-    if(plexUrl)links.push(`<a href="${plexUrl}" target="_blank" style="color:#378ADD;text-decoration:none">Listen in Plex →</a>`);
+    if(plexUrl)links.push(`<a href="${bxPlexHref(plexUrl)}"${bxTgt()} style="color:#378ADD;text-decoration:none">Listen in Plex →</a>`);
     return `<div style="border-left:3px solid #378ADD;padding:6px 0 6px 12px">
       <div style="font-weight:600;font-size:14px">${s[0]} &nbsp;<span style="font-weight:400;color:#888;font-size:13px">${s[11]}</span></div>
       ${alm?`<div style="font-size:12px;color:#888;margin-top:2px">${alm.venue}, ${alm.city}</div>`:''}
