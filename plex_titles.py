@@ -243,7 +243,7 @@ def propose(album):
         for d, n, t in entries:
             by_n.setdefault(n, t)
         for label, lookup in (("disc+track", lambda d, n: by_dn.get((d, n)) if d is not None else None),
-                              ("track #", lambda d, n: by_n.get(n) if d in (None, 1) and not album.get("disc", 0) not in (None, 1) else None)):
+                              ("track #", lambda d, n: by_n.get(n) if d in (None, 1) else None)):
             titles = [lookup(*_pos(album, t)) for t in tracks]
             if all(x is not None for x in titles):
                 titles = _fill_blanks(titles, tracks)
