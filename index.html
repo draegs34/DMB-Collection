@@ -336,6 +336,235 @@ body.dark .notif-gap { background:#0d3020; border-color:#1a5030; }
 }
 
 #exportBtn:hover{background:#e6e5dd} body.dark #exportBtn{background:#2a2a28;border-color:#3a3a38;color:#aaa} body.dark #exportBtn:hover{background:#333330;color:#e8e7e2} @media (max-width: 700px){ #exportBtn{padding:4px 8px;font-size:11px} }
+
+/* ── BROWSER v3 (year timeline / phone cards) ─────────────────────────── */
+.bx{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start;max-width:1280px;margin:0 auto}
+.bx-side{flex:1 1 240px;max-width:270px;background:#fff;border:1px solid #e0dfd7;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px;position:sticky;top:62px;max-height:calc(100vh - 80px);overflow:auto;box-sizing:border-box}
+.bx-h{font-size:11px;font-weight:700;letter-spacing:.06em;color:#6b6a64}
+.bx-side>.bx-h{margin-bottom:-8px}
+.bx-search{display:flex;align-items:center;gap:8px}
+.bx-search input{flex:1;min-width:0;font:inherit;font-size:14px;padding:9px 12px;border:1px solid #d6d4cb;border-radius:8px;outline:none;background:#fff;color:#1a1a18;box-sizing:border-box}
+.bx-search input:focus{border-color:#378ADD}
+.bx-morebtn{display:none}
+.bx-quick,.bx-sws{display:flex;flex-direction:column}
+.bx-quick .bx-h{margin-bottom:4px}
+.bx-more{display:flex;flex-direction:column;gap:14px}
+.bx-sw{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;color:inherit;padding:7px 0;cursor:pointer;position:relative;user-select:none}
+.bx-sw input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.bx-sw .short{display:none}
+.bx-track{width:36px;height:20px;border-radius:999px;background:#d6d4cb;position:relative;flex:none;transition:background .15s}
+.bx-track::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.bx-sw input:checked+.bx-track{background:#185FA5}
+.bx-sw input:checked+.bx-track::after{left:18px}
+.bx-sw input:focus-visible+.bx-track{outline:2px solid #378ADD;outline-offset:2px}
+.bx-field{display:flex;flex-direction:column;gap:6px}
+.bx-field select{font:inherit;font-size:14px;padding:8px 10px;border:1px solid #d6d4cb;border-radius:8px;background:#fff;color:#1a1a18}
+.bx-seg{display:flex;background:#ecebe5;border-radius:9px;padding:3px;gap:2px}
+.bx-seg .sort-btn{flex:1;font-size:13px;border:none;border-radius:7px;padding:7px 8px;background:transparent;color:#4a4945}
+.bx-seg .sort-btn.active{background:#fff;color:#1a1a18;font-weight:600;border:none}
+.bx-clear{font:inherit;font-size:14px;padding:9px;border-radius:8px;border:1px solid #d6d4cb;background:#fff;color:#185FA5;cursor:pointer}
+.bx-main{flex:999 1 600px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.bx-top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.bx-title{font-size:24px;font-weight:650;margin:0}
+.bx-sub{font-size:14px;color:#5f5e58}
+.bx-legend{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:#3b3a36;margin-left:auto}
+.bx-legend i{width:13px;height:13px;border-radius:4px;background:#fff4d6;border:1px solid #e9cf7a}
+.bx-years{display:flex;gap:5px;flex-wrap:wrap}
+.bx-years button{font:inherit;font-size:12px;padding:5px 9px;border-radius:999px;border:1px solid #e0dfd7;background:#fff;color:#3b3a36;cursor:pointer}
+.bx-years button:hover{border-color:#378ADD}
+.bx-years button.on{background:#185FA5;border-color:#185FA5;color:#fff}
+.bx-sec{background:#fff;border:1px solid #e0dfd7;border-radius:14px}
+.bx-sec-h{display:flex;align-items:baseline;gap:12px;padding:14px 16px 10px}
+.bx-sec-h h3{margin:0;font-size:28px;font-weight:700;letter-spacing:-.02em}
+.bx-sec-h h3.small{font-size:18px}
+.bx-sec-h span{font-size:13px;color:#5f5e58}
+.bx-show{border-top:1px solid #ecebe5}
+.bx-sec>.bx-show:last-child{border-radius:0 0 13px 13px}
+.bx-show.att{background:#fff4d6}
+.bx-row{display:grid;grid-template-columns:96px minmax(0,1fr) minmax(0,260px) 120px;align-items:center;gap:14px;padding:11px 16px;cursor:pointer}
+.bx-date{display:flex;flex-direction:column}
+.bx-date .md{font-size:15px;font-weight:600}
+.bx-date .wd{font-size:12px;color:#5f5e58}
+.bx-show.att .bx-date .md,.bx-show.att .bx-date .wd{color:#6b4e00}
+.bx-venue{font-size:15px;font-weight:600}
+.bx-city{font-size:13px;color:#5f5e58}
+.bx-size{display:none}
+.bx-pills{display:flex;flex-wrap:wrap;gap:5px}
+.bx-pill{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;padding:4px 11px;border-radius:999px;white-space:nowrap}
+.bx-pill.att{background:#fef3cd;color:#6b4e00;border:1px solid #e9cf7a}
+.bx-pill.multi{background:#eeedfe;color:#2d2770}
+.bx-pill.flac{background:#e6f1fb;color:#0c447c}
+.bx-pill.flac24{background:#d0f0e5;color:#085041}
+.bx-pill.shn{background:#ecebe5;color:#4a4945}
+.bx-pill.src{background:#faeeda;color:#5c3305}
+.bx-acts{display:flex;gap:2px;justify-content:flex-end;align-items:center}
+.bx-ico{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:36px;height:36px;padding:0;border-radius:8px;border:none;background:transparent;color:#185FA5;text-decoration:none;cursor:pointer;font:inherit;box-sizing:border-box}
+.bx-ico:hover{background:#eef4fb}
+.bx-play.off,.bx-set.ghost{visibility:hidden}
+.bx-play .lbl,.bx-play .cnt,.bx-set .lbl{display:none}
+.bx-show.open .bx-exp{background:#eef4fb}
+.bx-exp svg{transition:transform .15s}
+.bx-show.open .bx-exp svg{transform:rotate(180deg)}
+.bx-detail{display:none;padding:2px 16px 16px;cursor:default}
+.bx-show.open .bx-detail{display:block}
+.bx-show.att .bx-detail{background:#fffaeb}
+.bx-recs{border:1px solid #e7e6df;border-radius:10px;background:#fff;overflow:hidden}
+.bx-rec,.bx-rec-head{display:grid;grid-template-columns:120px minmax(0,1fr) minmax(0,1fr) 90px;gap:4px 12px;padding:10px 12px;align-items:center}
+.bx-rec-head{font-size:11px;font-weight:700;letter-spacing:.06em;color:#6b6a64;border-bottom:1px solid #e7e6df;padding-top:8px;padding-bottom:8px}
+.bx-rec+.bx-rec{border-top:1px solid #f0efe9}
+.bx-rec .c-src,.bx-rec .c-tap{font-size:13px;overflow-wrap:anywhere}
+.bx-rec .none{color:#6b6a64}
+.bx-rec .k{display:none}
+.bx-rec .c-play{justify-self:end}
+.bx-rec .c-play a{font-size:13px;font-weight:600;text-decoration:none;color:#185FA5;display:inline-flex;align-items:center;gap:5px;padding:6px 8px;border-radius:6px}
+.bx-rec .c-play a:hover{background:#eef4fb}
+.bx-rec .c-notes{grid-column:1/4;font-size:13px;color:#5f5e58;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;overflow-wrap:anywhere}
+.bx-rec .c-notes.full{display:block}
+.bx-rec .c-folder{grid-column:1/4;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#6b6a64;word-break:break-all}
+.bx-foot{margin-top:10px;font-size:13px;color:#5f5e58}
+.bx-foot a{color:#185FA5}
+.bx-empty,.bx-more-note{text-align:center;padding:36px 16px;color:#6b6a64;font-size:14px}
+.bx-pick-bg{display:none}
+.bx-pick{position:fixed;z-index:600;width:380px;max-width:calc(100vw - 24px);background:#fff;border:1px solid #e0dfd7;border-radius:12px;box-shadow:0 12px 32px rgba(26,26,24,.18);overflow:hidden;display:none;box-sizing:border-box}
+.bx-pick.show{display:block}
+.bx-pick-h{padding:12px 14px 8px;display:flex;align-items:flex-start;gap:10px}
+.bx-pick-h .t{flex:1;min-width:0}
+.bx-pick-h .k{font-size:11px;font-weight:700;letter-spacing:.06em;color:#6b6a64}
+.bx-pick-h .s{font-size:15px;font-weight:650;margin-top:2px}
+.bx-pick-x{display:none}
+.bx-pick a{display:flex;align-items:center;gap:12px;padding:11px 14px;border-top:1px solid #f0efe9;text-decoration:none;color:#1a1a18}
+.bx-pick a:hover,.bx-pick a:focus-visible{background:#f3f7fc;outline:none}
+.bx-pick .pc{width:32px;height:32px;border-radius:50%;background:#eef4fb;color:#185FA5;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.bx-pick .pt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.bx-pick .pl{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.bx-pick .pf{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#6b6a64;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+body.dark .bx-side,body.dark .bx-sec,body.dark .bx-recs,body.dark .bx-pick{background:#222220;border-color:#333330}
+body.dark .bx-show{border-top-color:#2a2a28}
+body.dark .bx-show.att{background:#2b2312}
+body.dark .bx-show.att .bx-detail{background:#241e10}
+body.dark .bx-show.att .bx-date .md,body.dark .bx-show.att .bx-date .wd{color:#ffc94d}
+body.dark .bx-city,body.dark .bx-sub,body.dark .bx-sec-h span,body.dark .bx-date .wd,body.dark .bx-rec .c-notes,body.dark .bx-foot,body.dark .bx-h,body.dark .bx-rec .none,body.dark .bx-rec .c-folder,body.dark .bx-pick .pf,body.dark .bx-empty,body.dark .bx-more-note{color:#9a9993}
+body.dark .bx-search input,body.dark .bx-field select,body.dark .bx-clear,body.dark .bx-morebtn,body.dark .bx-years button{background:#1a1a18;border-color:#3a3a38;color:#e8e7e2}
+body.dark .bx-years button.on{background:#1a3868;border-color:#1a3868;color:#cfe3fa}
+body.dark .bx-seg{background:#2a2a28}
+body.dark .bx-seg .sort-btn{color:#aaa}
+body.dark .bx-seg .sort-btn.active{background:#3a3a38;color:#e8e7e2}
+body.dark .bx-track{background:#444441}
+body.dark .bx-ico,body.dark .bx-rec .c-play a,body.dark .bx-foot a{color:#5fa8e8}
+body.dark .bx-ico:hover,body.dark .bx-show.open .bx-exp,body.dark .bx-rec .c-play a:hover{background:#1a3050}
+body.dark .bx-legend{color:#ccc}
+body.dark .bx-legend i{background:#2b2312;border-color:#5a4500}
+body.dark .bx-pill.att{background:#2d2000;color:#ffc107;border-color:#5a4500}
+body.dark .bx-pill.multi{background:#1e1a40;color:#9d98e8}
+body.dark .bx-pill.flac{background:#1a3050;color:#7ab8f5}
+body.dark .bx-pill.flac24{background:#0d3028;color:#4ecba0}
+body.dark .bx-pill.shn{background:#2a2a28;color:#aaa}
+body.dark .bx-pill.src{background:#3a2810;color:#e0a060}
+body.dark .bx-rec-head{color:#888;border-bottom-color:#333330}
+body.dark .bx-rec+.bx-rec{border-top-color:#2a2a28}
+body.dark .bx-pick a{color:#e8e7e2;border-top-color:#2a2a28}
+body.dark .bx-pick a:hover,body.dark .bx-pick a:focus-visible{background:#2a2a28}
+body.dark .bx-pick .pc{background:#1a3050;color:#5fa8e8}
+
+.bx-ms-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;font:inherit;font-size:14px;padding:8px 10px;border:1px solid #d6d4cb;border-radius:8px;background:#fff;color:#1a1a18;cursor:pointer;text-align:left;min-height:38px;box-sizing:border-box}
+.bx-ms-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bx-ms-btn svg{flex:none;transition:transform .15s}
+.bx-ms.open .bx-ms-btn svg{transform:rotate(180deg)}
+.bx-ms.has .bx-ms-btn{border-color:#185FA5;background:#eef4fb;color:#0f4a85;font-weight:600}
+.bx-ms-panel{display:none;margin-top:4px;background:#fff;border:1px solid #e0dfd7;border-radius:10px;max-height:260px;overflow:auto;padding:4px}
+.bx-ms.open .bx-ms-panel{display:block}
+.bx-ms-opt{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:6px;font-size:14px;cursor:pointer}
+.bx-ms-opt:hover{background:#f3f2ed}
+.bx-ms-opt input{width:16px;height:16px;accent-color:#185FA5;margin:0;flex:none}
+.bx-ms-clear{display:block;width:100%;text-align:left;font:inherit;font-size:13px;color:#185FA5;background:none;border:none;border-bottom:1px solid #f0efe9;padding:7px 8px;margin-bottom:2px;cursor:pointer}
+body.dark .bx-ms-btn{background:#1a1a18;border-color:#3a3a38;color:#e8e7e2}
+body.dark .bx-ms.has .bx-ms-btn{background:#1a3050;border-color:#1f5fa0;color:#cfe3fa}
+body.dark .bx-ms-panel{background:#1a1a18;border-color:#3a3a38}
+body.dark .bx-ms-opt:hover{background:#2a2a28}
+body.dark .bx-ms-clear{color:#5fa8e8;border-bottom-color:#2a2a28}
+@media (max-width: 700px){.bx-ms-opt{min-height:44px;box-sizing:border-box}.bx-ms-btn{min-height:44px}}
+
+@media (max-width: 700px) {
+  .bx{gap:12px}
+  .bx-side{position:static;max-width:none;max-height:none;overflow:visible;flex-basis:100%;padding:0;background:none;border:none;gap:10px}
+  .bx-side>.bx-h,.bx-quick .bx-h,.bx-years,.bx-sw .long{display:none}
+  .bx-sw .short{display:inline}
+  .bx-search input{min-height:44px;font-size:16px}
+  .bx-morebtn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:14px;padding:0 14px;min-height:44px;border-radius:10px;border:1px solid #d6d4cb;background:#fff;color:#1a1a18;cursor:pointer}
+  .bx-quick{flex-direction:row;gap:8px}
+  .bx-quick .bx-sw{padding:9px 14px;border:1px solid #d6d4cb;border-radius:999px;background:#fff;min-height:40px;box-sizing:border-box}
+  .bx-quick .bx-track{display:none}
+  .bx-quick .bx-sw:has(input:checked){background:#185FA5;border-color:#185FA5;color:#fff}
+  .bx-quick .bx-sw:has(input:focus-visible){outline:2px solid #378ADD;outline-offset:2px}
+  .bx-more{display:none;background:#fff;border:1px solid #e0dfd7;border-radius:14px;padding:14px}
+  .bx-side.more-open .bx-more{display:flex}
+  .bx-legend{margin-left:auto}
+  .bx-title{font-size:16px}
+  .bx-sub{font-size:13px}
+  .bx-sec{background:none;border:none}
+  .bx-sec-h{padding:6px 2px 6px}
+  .bx-sec-h h3,.bx-sec-h h3.small{font-size:12px;letter-spacing:.08em;color:#5f5e58;font-weight:700}
+  .bx-show,.bx-sec>.bx-show:last-child{border:1px solid #e0dfd7;border-radius:16px;background:#fff;margin-bottom:10px;overflow:hidden}
+  .bx-show.att{border-color:#e9cf7a;background:#fff4d6}
+  .bx-row{grid-template-columns:56px minmax(0,1fr);grid-template-areas:"date info" "date pills" "acts acts";gap:6px 12px;padding:14px;align-items:start}
+  .bx-date{grid-area:date;align-items:center;background:#f3f2ed;border-radius:10px;padding:7px 0;text-align:center}
+  .bx-show.att .bx-date{background:#fde7a6}
+  .bx-date .md{display:flex;flex-direction:column;align-items:center;line-height:1}
+  .bx-date .m{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#185FA5}
+  .bx-date .d{font-size:22px;font-weight:650;margin-top:3px;color:#1a1a18}
+  .bx-show.att .bx-date .m{color:#6b4e00}
+  .bx-date .wd{font-size:11px;margin-top:3px}
+  .bx-info{grid-area:info}
+  .bx-pills{grid-area:pills}
+  .bx-pill{font-size:12px;padding:4px 10px}
+  .bx-size{display:inline}
+  .bx-acts{grid-area:acts;justify-content:stretch;gap:8px;margin-top:8px}
+  .bx-acts>.bx-ico{height:52px;border-radius:12px}
+  .bx-play{flex:1;background:#185FA5;color:#fff;font-size:16px;font-weight:650}
+  .bx-play:hover{background:#0f4a85}
+  .bx-play .lbl{display:inline}
+  .bx-play .cnt{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 7px;box-sizing:border-box;border-radius:999px;background:#fff;color:#185FA5;font-size:13px;font-weight:700}
+  .bx-play.off{visibility:visible;background:#ecebe5;color:#6b6a64}
+  .bx-set{border:1px solid #c9d9ea;padding:0 14px;background:#fff;font-size:14px;font-weight:600}
+  .bx-set .lbl{display:inline}
+  .bx-set svg{display:none}
+  .bx-set.ghost{display:none}
+  .bx-exp{width:52px;border:1px solid #c9d9ea;background:#fff}
+  .bx-detail{padding:2px 14px 8px;border-top:1px solid #ecebe5;background:#faf9f6}
+  .bx-show.att .bx-detail{background:#fffaeb;border-top-color:#efe6c8}
+  .bx-recs{border:none;background:none;border-radius:0}
+  .bx-rec-head{display:none}
+  .bx-rec{grid-template-columns:minmax(0,1fr) 52px;padding:12px 0;gap:4px 12px}
+  .bx-rec>*{grid-column:1}
+  .bx-rec .c-play{grid-column:2;grid-row:1 / span 5;align-self:center}
+  .bx-rec .c-play a{width:52px;height:52px;border-radius:50%;background:#185FA5;color:#fff;justify-content:center;padding:0}
+  .bx-rec .c-play a:hover{background:#0f4a85}
+  .bx-rec .c-play .lbl{display:none}
+  .bx-rec .k{display:inline;color:#5f5e58}
+  .bx-rec .c-notes,.bx-rec .c-folder{grid-column:1}
+  .bx-rec+.bx-rec{border-top-color:#e7e6df}
+  .bx-pick{left:0!important;right:0;bottom:0;top:auto!important;width:auto;max-width:none;border:none;border-radius:20px 20px 0 0;padding-bottom:20px}
+  .bx-pick-bg.show{display:block;position:fixed;inset:0;background:rgba(26,26,24,.45);z-index:599}
+  .bx-pick-h{padding:16px 18px 8px}
+  .bx-pick-h .s{font-size:18px}
+  .bx-pick-x{display:inline-flex;width:44px;height:44px;border-radius:50%;border:none;background:#f0efe9;align-items:center;justify-content:center;cursor:pointer;color:#3b3a36;flex:none}
+  .bx-pick a{min-height:64px;padding:12px 18px}
+  .bx-pick .pc{width:40px;height:40px;background:#185FA5;color:#fff}
+  body.dark .bx-show,body.dark .bx-sec>.bx-show:last-child{background:#222220;border-color:#333330}
+  body.dark .bx-show.att{background:#2b2312;border-color:#5a4500}
+  body.dark .bx-date{background:#2a2a28}
+  body.dark .bx-show.att .bx-date{background:#3a2e10}
+  body.dark .bx-date .d{color:#e8e7e2}
+  body.dark .bx-show.att .bx-date .m{color:#ffc94d}
+  body.dark .bx-quick .bx-sw,body.dark .bx-more,body.dark .bx-set,body.dark .bx-exp{background:#222220;border-color:#3a3a38}
+  body.dark .bx-detail{background:#1e1e1c;border-top-color:#2a2a28}
+  body.dark .bx-play{background:#1f5fa0;color:#fff}
+  body.dark .bx-play.off{background:#2a2a28;color:#888}
+  body.dark .bx-rec .c-play a{background:#1f5fa0;color:#fff}
+  body.dark .bx-pick-x{background:#2a2a28;color:#ccc}
+  body.dark .bx-quick .bx-sw:has(input:checked){background:#1f5fa0;border-color:#1f5fa0;color:#fff}
+}
 </style>
 </head>
 <body>
@@ -410,26 +639,49 @@ body.dark .notif-gap { background:#0d3020; border-color:#1a5030; }
 
 <!-- ═══════════════════════════ BROWSER ═══════════════════════════ -->
 <div id="browser" class="page">
-  <div class="filters">
-    <input type="text" id="search" placeholder="Search date, venue, city, folder…" />
-    <select id="yearSel"><option value="">All years</option></select>
-    <select id="fmtSel"><option value="">All formats</option></select>
-    <select id="srcSel"><option value="">All sources</option></select>
-    <label><input type="checkbox" id="multiOnly"> Multiple recordings</label>
-    <label><input type="checkbox" id="havOnly"> DMBAlmanac listing</label>
-    <label><input type="checkbox" id="plexOnly"> Plex</label>
-    <label><input type="checkbox" id="attOnly"> Attended</label>
-    <button class="clear-btn" onclick="clearFilters()">Clear all</button>
+  <div class="bx">
+    <aside class="bx-side" id="bxSide" aria-label="Filters">
+      <div class="bx-h">SEARCH</div>
+      <div class="bx-search">
+        <input type="text" id="search" placeholder="Date, venue, city, folder…" aria-label="Search shows" />
+        <button type="button" class="bx-morebtn" id="bxMoreBtn" aria-expanded="false" aria-controls="bxMore"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="17" x2="14" y2="17"/></svg>Filters</button>
+      </div>
+      <div class="bx-quick">
+        <div class="bx-h">SHOW ONLY</div>
+        <label class="bx-sw"><span><span class="long">Shows I attended</span><span class="short">★ Attended</span></span><input type="checkbox" id="attOnly"><span class="bx-track"></span></label>
+        <label class="bx-sw"><span><span class="long">Playable in Plex</span><span class="short">▶ In Plex</span></span><input type="checkbox" id="plexOnly"><span class="bx-track"></span></label>
+      </div>
+      <div class="bx-more" id="bxMore">
+        <div class="bx-sws">
+          <label class="bx-sw"><span>Has DMBAlmanac setlist</span><input type="checkbox" id="havOnly"><span class="bx-track"></span></label>
+          <label class="bx-sw"><span>Multiple recordings</span><input type="checkbox" id="multiOnly"><span class="bx-track"></span></label>
+        </div>
+        <div class="bx-field"><span class="bx-h" id="yearSelLbl">YEAR</span><div class="bx-ms" id="yearSel"><button type="button" class="bx-ms-btn" aria-expanded="false" aria-describedby="yearSelLbl"><span>All years</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button><div class="bx-ms-panel" role="group" aria-labelledby="yearSelLbl"></div></div></div>
+        <div class="bx-field"><span class="bx-h" id="fmtSelLbl">FORMAT</span><div class="bx-ms" id="fmtSel"><button type="button" class="bx-ms-btn" aria-expanded="false" aria-describedby="fmtSelLbl"><span>Any format</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button><div class="bx-ms-panel" role="group" aria-labelledby="fmtSelLbl"></div></div></div>
+        <div class="bx-field"><span class="bx-h" id="srcSelLbl">SOURCE</span><div class="bx-ms" id="srcSel"><button type="button" class="bx-ms-btn" aria-expanded="false" aria-describedby="srcSelLbl"><span>Any source</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button><div class="bx-ms-panel" role="group" aria-labelledby="srcSelLbl"></div></div></div>
+        <div class="bx-field"><span class="bx-h">SORT BY</span>
+          <div class="bx-seg" role="group" aria-label="Sort">
+            <button type="button" class="sort-btn active" data-s="date">Date</button>
+            <button type="button" class="sort-btn" data-s="size">Size</button>
+            <button type="button" class="sort-btn" data-s="files">Files</button>
+          </div>
+        </div>
+        <button type="button" class="bx-clear" onclick="clearFilters()">Clear all filters</button>
+      </div>
+    </aside>
+    <div class="bx-main">
+      <div class="bx-top">
+        <h2 class="bx-title" id="countLbl"></h2>
+        <span class="bx-sub" id="bxSub"></span>
+        <span class="bx-legend"><i aria-hidden="true"></i>Shows you attended</span>
+      </div>
+      <div id="activeFilters" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      <div class="bx-years" id="bxYears" role="group" aria-label="Filter by year"></div>
+      <div id="results"></div>
+    </div>
   </div>
-  <div class="sort-bar">
-    <span>Sort:</span>
-    <button class="sort-btn active" data-s="date">Date</button>
-    <button class="sort-btn" data-s="size">Size</button>
-    <button class="sort-btn" data-s="files">Files</button>
-    <div id="activeFilters" style="display:flex;gap:6px;flex-wrap:wrap;margin-left:8px"></div>
-    <span class="count-label" id="countLbl"></span>
-  </div>
-  <div class="results" id="results"></div>
+  <div class="bx-pick-bg" id="bxPickBg" onclick="closePicker()"></div>
+  <div class="bx-pick" id="bxPick" role="dialog" aria-label="Play in Plex"></div>
 </div>
 
 <!-- ═══════════════════════════ GAPS ═══════════════════════════ -->
@@ -490,6 +742,8 @@ const ATTENDED_DATES=new Set(["1998-07-28", "1998-12-19", "1999-05-12", "2000-06
 
 const dateCounts={};
 SHOWS.forEach(s=>{if(s[0])dateCounts[s[0]]=(dateCounts[s[0]]||0)+1;});
+// Nugs releases: folder name says "nugs" but the source field is empty
+SHOWS.forEach(s=>{if(!s[4]&&/nugs/i.test(s[11]||''))s[4]='Nugs';});
 const collDates=new Set(SHOWS.map(s=>s[0]).filter(Boolean));
 
 const GAPS=Object.entries(ALMANAC)
@@ -504,10 +758,47 @@ document.getElementById('gapsCount').textContent=GAPS.length.toLocaleString();
 const years=[...new Set(SHOWS.map(s=>s[1]).filter(Boolean))].sort();
 const fmts=[...new Set(SHOWS.map(s=>s[2]).filter(Boolean))].sort();
 const srcs=[...new Set(SHOWS.map(s=>s[4]).filter(Boolean))].sort();
-const yS=document.getElementById('yearSel'),fS=document.getElementById('fmtSel'),sS=document.getElementById('srcSel');
-years.forEach(y=>yS.innerHTML+=`<option value="${y}">${y}</option>`);
-fmts.forEach(f=>fS.innerHTML+=`<option value="${f}">${f}</option>`);
-srcs.forEach(s=>sS.innerHTML+=`<option value="${s}">${s}</option>`);
+// Multi-select dropdowns (stand in for the old <select>s; .value still works for other code)
+function BxMulti(id,allLabel,noun){
+  this.el=document.getElementById(id);this.sel=new Set();this.fns=[];this.allLabel=allLabel;this.noun=noun;
+  this.btn=this.el.querySelector('.bx-ms-btn');this.panel=this.el.querySelector('.bx-ms-panel');
+  this.btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    const open=!this.el.classList.contains('open');
+    document.querySelectorAll('.bx-ms.open').forEach(m=>{m.classList.remove('open');m.querySelector('.bx-ms-btn').setAttribute('aria-expanded','false');});
+    this.el.classList.toggle('open',open);this.btn.setAttribute('aria-expanded',open);
+  });
+  this.panel.addEventListener('change',e=>{
+    const cb=e.target;if(!cb.matches('input[type=checkbox]'))return;
+    cb.checked?this.sel.add(cb.value):this.sel.delete(cb.value);
+    this.sync();this.fire();
+  });
+  this.panel.addEventListener('click',e=>{if(e.target.closest('.bx-ms-clear')){this.sel.clear();this.sync();this.fire();}});
+}
+BxMulti.prototype.setOptions=function(list){
+  this.panel.innerHTML='<button type="button" class="bx-ms-clear">Clear selection</button>'+
+    list.map(v=>`<label class="bx-ms-opt"><input type="checkbox" value="${bxEsc(v)}"><span>${bxEsc(v)}</span></label>`).join('');
+  this.sync();
+};
+BxMulti.prototype.sync=function(){
+  this.panel.querySelectorAll('input').forEach(cb=>cb.checked=this.sel.has(cb.value));
+  const n=this.sel.size;
+  this.btn.querySelector('span').textContent=n===0?this.allLabel:n===1?[...this.sel][0]:n+' '+this.noun;
+  this.el.classList.toggle('has',n>0);
+};
+BxMulti.prototype.fire=function(){this.fns.forEach(f=>f());};
+BxMulti.prototype.addEventListener=function(t,f){if(t==='change')this.fns.push(f);};
+Object.defineProperty(BxMulti.prototype,'value',{
+  get(){return this.sel.size?[...this.sel].sort().join(', '):'';},
+  set(v){this.sel=new Set(v?[v]:[]);this.sync();}
+});
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.bx-ms'))document.querySelectorAll('.bx-ms.open').forEach(m=>{m.classList.remove('open');m.querySelector('.bx-ms-btn').setAttribute('aria-expanded','false');});
+});
+const yS=new BxMulti('yearSel','All years','years'),fS=new BxMulti('fmtSel','Any format','formats'),sS=new BxMulti('srcSel','Any source','sources');
+yS.setOptions(years.filter(y=>/^\d{4}$/.test(y)));
+fS.setOptions(fmts);
+sS.setOptions(srcs);
 const gapYearSel=document.getElementById('gapYear');
 [...new Set(GAPS.map(g=>g.date.slice(0,4)))].sort().forEach(y=>gapYearSel.innerHTML+=`<option value="${y}">${y}</option>`);
 
@@ -709,17 +1000,17 @@ function clearChip(i){document.getElementById('activeFilters')._chips[i].clear()
 
 function getFiltered(){
   const q=document.getElementById('search').value.toLowerCase().trim();
-  const yr=yS.value,fmt=fS.value,src=sS.value;
+  const yrs=yS.sel,fmtz=fS.sel,srcz=sS.sel;
   const multiOnly=document.getElementById('multiOnly').checked;
   const havOnly=document.getElementById('havOnly').checked;
   const plexOnly=document.getElementById('plexOnly').checked;
   const attOnly=document.getElementById('attOnly').checked;
   return SHOWS.filter(s=>{
-    if(yr&&s[1]!==yr)return false;
-    if(!yr&&eraYearFilter&&!eraYearFilter.has(s[1]))return false;
-    if(fmt&&s[2]!==fmt)return false;
+    if(yrs.size&&!yrs.has(s[1]))return false;
+    if(!yrs.size&&eraYearFilter&&!eraYearFilter.has(s[1]))return false;
+    if(fmtz.size&&!fmtz.has(s[2]))return false;
     if(bitDepthFilter&&(s[2]!=='FLAC'||s[3]!==bitDepthFilter))return false;
-    if(src&&s[4]!==src)return false;
+    if(srcz.size&&!srcz.has(s[4]))return false;
     if(multiOnly&&(dateCounts[s[0]]||0)<2)return false;
     if(havOnly&&!ALMANAC[s[0]])return false;
     if(plexOnly&&!PLEX_MAP[s[11]])return false;
@@ -733,89 +1024,203 @@ function getFiltered(){
   });
 }
 
-function render(){
-  updateActiveFilters();
-  const filtered=[...getFiltered()];
-  const res=document.getElementById('results');
-  const totalDates=Object.keys(dateCounts).length;
+// ── Browser v3: year timeline (desktop) / cards (phone) ───────────────────────
+var BX_MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var BX_WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var BX_I={
+  play:'<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="6 4 20 12 6 20 6 4"/></svg>',
+  list:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>',
+  chev:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>',
+  x:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>'
+};
+var bxByDate=new Map();
+var bxTotalDates=0;
 
-  if(!filtered.length){
-    document.getElementById('countLbl').textContent='0 of '+totalDates.toLocaleString()+' dates';
-    res.innerHTML='<div class="no-res">No recordings match your filters.</div>';
-    return;
-  }
+function bxEsc(t){return String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function bxSize(mb){if(!mb)return'';return mb>=1024?(mb/1024).toFixed(1)+' GB':Math.round(mb)+' MB';}
+function bxFmt(s){
+  if(!s[2])return null;
+  const lab=s[2]==='FLAC'&&s[3]?'FLAC '+s[3]:s[2];
+  const cls=s[2]==='FLAC'&&s[3]==='24'?'flac24':s[2]==='SHN'?'shn':'flac';
+  return {lab,cls};
+}
+function bxDateParts(d){
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d||'');
+  if(!m)return null;
+  const mo=+m[2],dy=+m[3];
+  if(mo<1||mo>12)return {y:m[1],mon:'',day:'?',wd:'date unknown',partial:true};
+  if(dy<1)return {y:m[1],mon:BX_MON[mo-1],day:'?',wd:'day unknown',partial:true};
+  const dt=new Date(Date.UTC(+m[1],mo-1,dy));
+  return {y:m[1],mon:BX_MON[mo-1],day:dy,wd:BX_WD[dt.getUTCDay()]};
+}
+function bxYearKey(d){return /^\d{4}/.test(d||'')?d.slice(0,4):'Undated';}
+function bxNotes(s){return s[10]?s[10].split('|').map(p=>p.trim()).filter(Boolean).join(' · '):'';}
 
-  // Group by date
-  const byDate=new Map();
-  filtered.forEach(s=>{
-    const d=s[0]||'?';
-    if(!byDate.has(d))byDate.set(d,[]);
-    byDate.get(d).push(s);
-  });
-
-  document.getElementById('countLbl').textContent=byDate.size.toLocaleString()+' of '+totalDates.toLocaleString()+' dates';
-
-  // Sort dates
-  const dates=[...byDate.keys()].sort((a,b)=>{
-    if(sortKey==='size'){
-      return byDate.get(b).reduce((t,s)=>t+s[7],0)-byDate.get(a).reduce((t,s)=>t+s[7],0);
-    }
-    if(sortKey==='files'){
-      return byDate.get(b).reduce((t,s)=>t+(s[6]||0),0)-byDate.get(a).reduce((t,s)=>t+(s[6]||0),0);
-    }
-    return (a||'9999').localeCompare(b||'9999');
-  });
-
-  const PAGE=200,visDates=dates.slice(0,PAGE);
-
-  res.innerHTML=visDates.map((date,i)=>{
-    const recs=byDate.get(date);
-    const alm=ALMANAC[date];
-    const hasPlex=recs.some(s=>PLEX_MAP[s[11]]);
-    const totSize=recs.reduce((t,s)=>t+s[7],0);
-
-    const recRows=recs.map(s=>{
-      const plexUrl=PLEX_MAP[s[11]];
-      const notes=s[10]?s[10].split('|').filter(p=>p.trim()).join(' · '):'';
-      return `<div class="rec-row">
-        <div class="rec-name">${s[11]}</div>
-        <div class="rec-badges">${fmtBadge(s[2],s[3])}${s[4]?`<span class="badge b-src">${s[4]}</span>`:''}</div>
-        <div class="rec-meta">${sizeFmt(s[7])}${s[6]?' · '+s[6]+' files':''}${s[8]?' · '+Math.round(s[8])+'m':''}</div>
-        ${plexUrl?`<a class="rec-plex" href="${plexUrl}" target="_blank" onclick="event.stopPropagation()">Listen in Plex →</a>`:''}
-        ${notes?`<div class="rec-notes">${notes}</div>`:''}
-        ${s[5]?`<div class="rec-notes" style="color:#bbb">Taper: ${s[5]}</div>`:''}
-      </div>`;
-    }).join('');
-
-    return `<div class="r" onclick="toggle(this,'ex${i}')">
-      <div class="r-head">
-        <div class="r-date">${date||'?'}</div>
-        <div class="r-meta">${sizeFmt(totSize)}${recs.length>1?' · '+recs.length+' rec':''}</div>
-      </div>
-      ${alm?`<div class="r-venue">${alm.venue}</div><div class="r-city">${alm.city}</div>`:''}
-      <div class="badges" style="margin-top:4px">
-        ${recs.length>1?`<span class="badge b-multi">${recs.length} recordings</span>`:''}
-        ${alm?`<a class="badge b-have" href="${alm.url}" target="_blank" onclick="event.stopPropagation()">✓ almanac</a>`:''}
-        ${hasPlex?`<span class="badge b-plex">▶ Plex</span>`:''}
-        ${ATTENDED_DATES.has(date)?'<span class="badge b-att">★ attended</span>':''}
-      </div>
-      <div class="expand" id="ex${i}" onclick="event.stopPropagation()">
-        ${alm?`<div class="expand-head"><a href="${alm.url}" target="_blank">View setlist →</a> &nbsp;·&nbsp; ${alm.tour}</div>`:''}
-        ${recRows}
-      </div>
+function bxShowHTML(date,recs){
+  const alm=ALMANAC[date];
+  const att=ATTENDED_DATES.has(date);
+  const dp=bxDateParts(date);
+  const plexN=recs.filter(s=>PLEX_MAP[s[11]]).length;
+  const totSize=recs.reduce((t,s)=>t+(s[7]||0),0);
+  const pills=[];
+  if(att)pills.push('<span class="bx-pill att">★ Attended</span>');
+  if(recs.length>1)pills.push(`<span class="bx-pill multi">${recs.length} recordings</span>`);
+  if(recs.length===1&&recs[0][4])pills.push(`<span class="bx-pill src">${bxEsc(recs[0][4])}</span>`);
+  const dateHTML=dp
+    ?`<div class="md"><span class="m">${dp.mon}</span> <span class="d">${dp.day}</span></div><div class="wd">${dp.wd}</div>`
+    :`<div class="md">${bxEsc(date||'?')}</div>`;
+  const sizeHTML=totSize?`<span class="bx-size"> · ${bxSize(totSize)}</span>`:'';
+  const where=alm
+    ?`<div class="bx-venue">${bxEsc(alm.venue)}</div><div class="bx-city">${bxEsc(alm.city)}${alm.tour?' · '+bxEsc(alm.tour):''}${sizeHTML}</div>`
+    :`<div class="bx-venue">${bxEsc(recs[0][11])}</div><div class="bx-city">Not listed on DMBAlmanac${sizeHTML}</div>`;
+  const play=plexN
+    ?`<button type="button" class="bx-ico bx-play" aria-label="${plexN>1?'Choose one of '+plexN+' recordings to play in Plex':'Play in Plex'}"${plexN>1?' aria-haspopup="dialog"':''}>${BX_I.play}<span class="lbl">Play in Plex</span>${plexN>1?`<span class="cnt" aria-hidden="true">${plexN}</span>`:''}</button>`
+    :`<button type="button" class="bx-ico bx-play off" disabled aria-label="Not in Plex">${BX_I.play}<span class="lbl">Not in Plex</span></button>`;
+  const set=alm
+    ?`<a class="bx-ico bx-set" href="${alm.url}" target="_blank" rel="noopener" aria-label="Setlist on DMBAlmanac" title="Setlist on DMBAlmanac">${BX_I.list}<span class="lbl">Setlist</span></a>`
+    :`<span class="bx-ico bx-set ghost" aria-hidden="true"></span>`;
+  const exp=`<button type="button" class="bx-ico bx-exp" aria-expanded="false" aria-label="Show recordings">${BX_I.chev}</button>`;
+  const none='<span class="none">—</span>';
+  const recRows=recs.map(s=>{
+    const f=bxFmt(s),url=PLEX_MAP[s[11]],notes=bxNotes(s);
+    return `<div class="bx-rec">
+      <div class="c-fmt">${f?`<span class="bx-pill ${f.cls}">${f.lab}</span>`:'<span class="bx-pill shn">Not tagged</span>'}</div>
+      <div class="c-src"><span class="k">Source: </span>${s[4]?bxEsc(s[4]):none}</div>
+      <div class="c-tap"><span class="k">Taper / mic: </span>${s[5]?bxEsc(s[5]):none}</div>
+      <div class="c-play">${url?`<a href="${url}" target="_blank" rel="noopener" aria-label="Play ${bxEsc(s[11])} in Plex">${BX_I.play}<span class="lbl">Plex</span></a>`:''}</div>
+      ${notes?`<div class="c-notes" title="Click to show all">${bxEsc(notes)}</div>`:''}
+      <div class="c-folder">${bxEsc(s[11])}</div>
     </div>`;
   }).join('');
-
-  if(dates.length>PAGE)res.innerHTML+=`<div class="page-note">Showing first ${PAGE} of ${dates.length.toLocaleString()} dates — refine filters to narrow</div>`;
+  const foot=alm?`<div class="bx-foot"><a href="${alm.url}" target="_blank" rel="noopener">View setlist on DMBAlmanac →</a>${alm.tour?' · '+bxEsc(alm.tour)+' tour':''}</div>`:'';
+  return `<div class="bx-show${att?' att':''}" data-date="${bxEsc(date)}">
+    <div class="bx-row"><div class="bx-date">${dateHTML}</div><div class="bx-info">${where}</div><div class="bx-pills">${pills.join('')}</div><div class="bx-acts">${play}${set}${exp}</div></div>
+    <div class="bx-detail"><div class="bx-recs"><div class="bx-rec-head"><span>FORMAT</span><span>SOURCE</span><span>TAPER / MIC</span><span></span></div>${recRows}</div>${foot}</div>
+  </div>`;
 }
 
-function toggle(row,id){
-  const ex=document.getElementById(id);
-  const wasOpen=ex.classList.contains('show');
-  document.querySelectorAll('.expand.show').forEach(e=>e.classList.remove('show'));
-  document.querySelectorAll('.r.open').forEach(r=>r.classList.remove('open'));
-  if(!wasOpen){ex.classList.add('show');row.classList.add('open');}
+function bxRenderYears(){
+  const el=document.getElementById('bxYears');
+  if(!el)return;
+  const sel=yS.sel;
+  el.innerHTML=`<button type="button" class="${sel.size?'':'on'}" data-y="" aria-pressed="${!sel.size}">All</button>`+
+    years.filter(y=>/^\d{4}$/.test(y)).map(y=>`<button type="button" class="${sel.has(y)?'on':''}" data-y="${y}" aria-pressed="${sel.has(y)}" title="${y}">’${y.slice(2)}</button>`).join('');
 }
+
+function render(){
+  updateActiveFilters();
+  closePicker();
+  const filtered=getFiltered();
+  const res=document.getElementById('results');
+  if(!bxTotalDates)bxTotalDates=new Set(SHOWS.map(s=>s[0]||'?')).size;
+  const totalDates=bxTotalDates;
+  const byDate=new Map();
+  filtered.forEach(s=>{const d=s[0]||'?';if(!byDate.has(d))byDate.set(d,[]);byDate.get(d).push(s);});
+  bxByDate=byDate;
+  const n=byDate.size;
+  document.getElementById('countLbl').textContent=n.toLocaleString()+(n===1?' show':' shows');
+  document.getElementById('bxSub').textContent=(n===totalDates?'':'of '+totalDates.toLocaleString()+' · ')+filtered.length.toLocaleString()+(filtered.length===1?' recording':' recordings');
+  bxRenderYears();
+  if(!n){res.innerHTML='<div class="bx-empty">No shows match your filters.</div>';return;}
+
+  const dates=[...byDate.keys()].sort((a,b)=>{
+    if(sortKey==='size')return byDate.get(b).reduce((t,s)=>t+s[7],0)-byDate.get(a).reduce((t,s)=>t+s[7],0);
+    if(sortKey==='files')return byDate.get(b).reduce((t,s)=>t+(s[6]||0),0)-byDate.get(a).reduce((t,s)=>t+(s[6]||0),0);
+    const ka=/^\d{4}/.test(a)?a:'9999'+a,kb=/^\d{4}/.test(b)?b:'9999'+b;
+    return ka.localeCompare(kb);
+  });
+  const PAGE=200,vis=dates.slice(0,PAGE);
+  let html='';
+  if(sortKey==='date'){
+    const yc={};
+    dates.forEach(d=>{const y=bxYearKey(d);yc[y]=(yc[y]||0)+1;});
+    let cur=null;
+    vis.forEach(d=>{
+      const y=bxYearKey(d);
+      if(y!==cur){
+        if(cur!==null)html+='</section>';
+        cur=y;
+        html+=`<section class="bx-sec"><div class="bx-sec-h"><h3>${y}</h3><span>${yc[y].toLocaleString()} show${yc[y]===1?'':'s'}</span></div>`;
+      }
+      html+=bxShowHTML(d,byDate.get(d));
+    });
+    html+='</section>';
+  }else{
+    html=`<section class="bx-sec"><div class="bx-sec-h"><h3 class="small">${sortKey==='size'?'Largest first':'Most files first'}</h3></div>`+
+      vis.map(d=>bxShowHTML(d,byDate.get(d))).join('')+'</section>';
+  }
+  if(dates.length>PAGE)html+=`<div class="bx-more-note">Showing the first ${PAGE} of ${dates.length.toLocaleString()} shows — narrow the filters to see more</div>`;
+  res.innerHTML=html;
+}
+
+function bxPlay(date,btn){
+  const recs=(bxByDate.get(date)||[]).filter(s=>PLEX_MAP[s[11]]);
+  if(!recs.length)return;
+  if(recs.length===1){window.open(PLEX_MAP[recs[0][11]],'_blank','noopener');return;}
+  const p=document.getElementById('bxPick');
+  const alm=ALMANAC[date],dp=bxDateParts(date);
+  const title=(alm?alm.venue:'Recordings')+(dp?(dp.partial?' · '+date:' · '+dp.mon+' '+dp.day+', '+dp.y):'');
+  p.innerHTML=`<div class="bx-pick-h"><div class="t"><div class="k">PLAY IN PLEX — PICK A RECORDING</div><div class="s">${bxEsc(title)}</div></div><button type="button" class="bx-pick-x" aria-label="Close" onclick="closePicker()">${BX_I.x}</button></div>`+
+    recs.map(s=>{
+      const f=bxFmt(s);
+      const name=s[5]||s[4]||'Recording';
+      return `<a href="${PLEX_MAP[s[11]]}" target="_blank" rel="noopener" onclick="closePicker()"><span class="pc">${BX_I.play}</span><span class="pt"><span class="pl">${f?`<span class="bx-pill ${f.cls}">${f.lab}</span>`:''}${bxEsc(name)}</span><span class="pf">${bxEsc(s[11])}</span></span></a>`;
+    }).join('');
+  const mobile=window.matchMedia('(max-width: 700px)').matches;
+  p.style.left='';p.style.top='';
+  p.classList.add('show');
+  document.getElementById('bxPickBg').classList.toggle('show',mobile);
+  if(!mobile){
+    const r=btn.getBoundingClientRect(),w=p.offsetWidth,h=p.offsetHeight;
+    let left=Math.max(12,Math.min(r.right-w,window.innerWidth-w-12));
+    let top=r.bottom+6;
+    if(top+h>window.innerHeight-12)top=Math.max(12,r.top-h-6);
+    p.style.left=left+'px';p.style.top=top+'px';
+  }
+  const first=p.querySelector('a');
+  if(first)first.focus({preventScroll:true});
+}
+function closePicker(){
+  const p=document.getElementById('bxPick');
+  if(!p)return;
+  p.classList.remove('show');
+  const bg=document.getElementById('bxPickBg');
+  if(bg)bg.classList.remove('show');
+}
+
+document.getElementById('results').addEventListener('click',e=>{
+  const show=e.target.closest('.bx-show');
+  if(!show)return;
+  const play=e.target.closest('.bx-play');
+  if(play){e.stopPropagation();if(!play.disabled)bxPlay(show.dataset.date,play);return;}
+  const notes=e.target.closest('.c-notes');
+  if(notes){notes.classList.toggle('full');return;}
+  if(e.target.closest('a'))return;
+  if(e.target.closest('.bx-exp')||e.target.closest('.bx-row')){
+    const open=!show.classList.contains('open');
+    show.classList.toggle('open',open);
+    const b=show.querySelector('.bx-exp');
+    b.setAttribute('aria-expanded',open);
+    b.setAttribute('aria-label',open?'Hide recordings':'Show recordings');
+  }
+});
+document.getElementById('bxYears').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-y]');
+  if(!b)return;
+  const y=b.dataset.y;
+  if(!y)yS.sel.clear();else if(yS.sel.has(y))yS.sel.delete(y);else yS.sel.add(y);
+  yS.sync();eraYearFilter=null;render();
+});
+document.getElementById('bxMoreBtn').addEventListener('click',()=>{
+  const open=document.getElementById('bxSide').classList.toggle('more-open');
+  document.getElementById('bxMoreBtn').setAttribute('aria-expanded',open);
+});
+document.addEventListener('click',e=>{
+  const p=document.getElementById('bxPick');
+  if(p&&p.classList.contains('show')&&!p.contains(e.target)&&!e.target.closest('.bx-play'))closePicker();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePicker();});
+window.addEventListener('scroll',()=>{if(!window.matchMedia('(max-width: 700px)').matches)closePicker();},{passive:true});
 
 function clearFilters(){
   document.getElementById('search').value='';
@@ -1368,5 +1773,5 @@ function dismissNotif(notif) {
   }, 220);
 }
 </script>
-<div style="text-align:center;padding:24px 20px 32px;font-size:11px;color:#bbb">DMB Collection Dashboard &nbsp;·&nbsp; last run 2026-11-17 16:53 &nbsp;·&nbsp; v2.7 &nbsp;·&nbsp; built 2026-10-12</div></body>
+<div style="text-align:center;padding:24px 20px 32px;font-size:11px;color:#bbb">DMB Collection Dashboard &nbsp;·&nbsp; last run 2026-11-17 16:53 &nbsp;·&nbsp; v3.0 &nbsp;·&nbsp; built 2026-11-17</div></body>
 </html>
