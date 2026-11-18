@@ -102,9 +102,15 @@ def build_albums(tracks):
         a["tracks"].sort(key=lambda x: natural_key(x["file"]))
         dirs = {str(Path(x["file"]).parent) for x in a["tracks"]}
         folder = Path(dirs.pop()) if len(dirs) == 1 else Path(_common_dir(dirs | {str(Path(a["tracks"][0]["file"]).parent)}))
+        a["disc"] = None
+        if DISC_DIR.match(folder.name):                     # .../dmb2009-04-14.xyz/d1
+            a["disc"] = int(re.search(r"\d+", folder.name).group())
+            folder = folder.parent
         a["folder"] = folder
         a["date"] = folder_date(folder.name) or folder_date(str(folder))
     return list(albums.values())
+
+DISC_DIR = re.compile(r"^\s*(?:d|cd|disc|disk)\s*[-_ ]?\d{1,2}\s*$", re.I)
 
 def _common_dir(paths):
     parts = [Path(p).parts for p in paths]
@@ -144,11 +150,32 @@ JUNK = re.compile(r"\.(flac|shn|wav|mp3|ffp|md5)\b|[0-9a-f]{32}|\bkbps\b|\bkhz\b
                   r"conversion|seeded|recorded by|\bmics?\b|\bdat\b|>\s*cd\b|sbd\s*>|aud\s*>", re.I)
 WORDNUM = {"one": 1, "two": 2, "three": 3, "four": 4, "i": 1, "ii": 2, "iii": 3, "iv": 4}
 
+FOOTNOTE = re.compile(r"\s*[*~$#+&^%@!]+\s*$")
+SEGUE    = re.compile(r"\s*(?:-+>|=+>|>+)\s*$")
+
 def clean_title(t):
     t = t.replace("\t", " ")
     t = DURATION.sub("", t)
-    t = re.sub(r"\s{2,}", " ", t).strip(" -–—|")
-    return t.strip()
+    t = re.sub(r"\s{2,}", " ", t).strip(" |")
+    t = re.sub(r"^(?:e|encore)\s*[:\-]\s*", "", t, flags=re.I)      # "E: Christmas Song"
+    segue = False
+    for _ in range(3):                                            # "What Would You Say > &", "Seek Up>>"
+        t2 = FOOTNOTE.sub("", t)
+        if SEGUE.search(t2):
+            segue, t2 = True, SEGUE.sub("", t2)
+        if t2 == t:
+            break
+        t = t2
+    t = t.strip(" -–—|")
+    return (t + " >") if (segue and t) else t
+
+def title_from_filename(path):
+    """'15 - encore break (1999-06-22).flac' → 'encore break'"""
+    s = Path(path).stem
+    s = re.sub(r"\((?:19|20)\d{2}[-.]\d{2}[-.]\d{2}\)", "", s)
+    s = re.sub(r"^\s*(?:d\d+\s*)?t?\d{1,3}\s*[-._)]?\s*", "", s, flags=re.I)
+    s = s.strip(" -_.")
+    return s if re.search(r"[a-z]{3}", s, re.I) and not re.search(r"(19|20)\d{2}[-.]\d{2}", s) else ""
 
 def parse_setlist(text):
     """Return [(disc, num, title)] in file order."""
@@ -167,8 +194,10 @@ def parse_setlist(text):
         if not m:
             continue
         d, num, title = m.group(1), int(m.group(2)), clean_title(m.group(3))
-        if not title or len(title) > 90 or JUNK.search(title) or re.fullmatch(r"[\d:.\s]+", title):
+        if len(title) > 90 or JUNK.search(title) or re.fullmatch(r"[\d:.\s]*", title):
             continue
+        if not re.search(r"[a-z0-9#]", title, re.I):
+            title = ""                             # e.g. "==========" encore-break line
         if d:
             disc = int(d)
         elif num == 1 and last_num >= 1:
@@ -213,19 +242,35 @@ def propose(album):
         by_n = {}
         for d, n, t in entries:
             by_n.setdefault(n, t)
-        for label, lookup in (("disc+track", lambda d, n: by_dn.get((d, n)) if d else None),
-                              ("track #", lambda d, n: by_n.get(n) if d in (None, 1) else None)):
-            titles = [lookup(*file_pos(t["file"])) for t in tracks]
-            if all(titles):
-                return {"method": f"numbers ({label})", "source": fname, "titles": titles}
+        for label, lookup in (("disc+track", lambda d, n: by_dn.get((d, n)) if d is not None else None),
+                              ("track #", lambda d, n: by_n.get(n) if d in (None, 1) and not album.get("disc", 0) not in (None, 1) else None)):
+            titles = [lookup(*_pos(album, t)) for t in tracks]
+            if all(x is not None for x in titles):
+                titles = _fill_blanks(titles, tracks)
+                if titles:
+                    return {"method": f"numbers ({label})", "source": fname, "titles": titles}
         # 2) same number of songs as tracks → take them in order
         if len(entries) == len(tracks):
-            cand = {"method": "same count, in order", "source": fname, "titles": [t for _, _, t in entries]}
-            best = best or cand
+            titles = _fill_blanks([t for _, _, t in entries], tracks)
+            if titles:
+                best = best or {"method": "same count, in order", "source": fname, "titles": titles}
         elif best is None or best.get("method") == "mismatch":
             best = {"method": "mismatch", "source": fname,
                     "detail": f"info file lists {len(entries)} songs, folder has {len(tracks)} tracks"}
     return best or {"method": "none", "detail": "no setlist found in the folder's info files"}
+
+def _pos(album, t):
+    d, n = file_pos(t["file"])
+    return (album.get("disc") if d is None and album.get("disc") else d), n
+
+def _fill_blanks(titles, tracks):
+    out = []
+    for title, t in zip(titles, tracks):
+        title = title or title_from_filename(t["file"])
+        if not title:
+            return None
+        out.append(title)
+    return out
 
 def album_name(album, almanac):
     date = album["date"]
@@ -236,7 +281,8 @@ def album_name(album, almanac):
     lineage = re.sub(r"^.*?(?:19|20)\d{2}[-.]\d{2}[-.]\d{2}[\s._-]*", "", album["folder"].name)
     lineage = re.sub(r"\.(flac\d*|shnf?|mp3)$", "", lineage, flags=re.I).strip(" ._-")
     name = date.replace("-", "/") + (f" {where}" if where else "")
-    return name + (f" [{lineage}]" if lineage else "")
+    name += f" [{lineage}]" if lineage else ""
+    return name + (f" (Disc {album['disc']})" if album.get("disc") else "")
 
 
 # ── Commands ─────────────────────────────────────────────────────────────────
