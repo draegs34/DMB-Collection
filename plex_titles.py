@@ -150,7 +150,7 @@ JUNK = re.compile(r"\.(flac|shn|wav|mp3|ffp|md5)\b|[0-9a-f]{32}|\bkbps\b|\bkhz\b
                   r"conversion|seeded|recorded by|\bmics?\b|\bdat\b|>\s*cd\b|sbd\s*>|aud\s*>", re.I)
 WORDNUM = {"one": 1, "two": 2, "three": 3, "four": 4, "i": 1, "ii": 2, "iii": 3, "iv": 4}
 
-FOOTNOTE = re.compile(r"[\s\u200b-\u200f\ufeff]*[*~$#+&^%@!]+[\s\u200b-\u200f\ufeff]*$")
+FOOTNOTE = re.compile(r"[^\w)\]'\"?.>]+$")             # any trailing symbol run (*, ~, $, +, look-alikes…)
 SEGUE    = re.compile(r"\s*(?:-+>|=+>|>+)\s*$")
 
 def clean_title(t):
@@ -161,10 +161,10 @@ def clean_title(t):
     t = re.sub(r"\s{2,}", " ", t).strip(" |")
     t = re.sub(r"^(?:e|encore)\s*[:\-]\s*", "", t, flags=re.I)      # "E: Christmas Song"
     segue = False
-    for _ in range(3):                                            # "What Would You Say > &", "Seek Up>>"
-        t2 = FOOTNOTE.sub("", t)
+    for _ in range(4):                                            # "What Would You Say > &", "Seek Up>>"
+        t2 = FOOTNOTE.sub("", t).rstrip()
         if SEGUE.search(t2):
-            segue, t2 = True, SEGUE.sub("", t2)
+            segue, t2 = True, SEGUE.sub("", t2).rstrip()
         if t2 == t:
             break
         t = t2
