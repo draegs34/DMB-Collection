@@ -149,7 +149,7 @@ DISC_HDR = re.compile(r"^\s*(?:disc|disk|cd|set)\s*[#:]?\s*(\d+|one|two|three|fo
 SONG_LINE = re.compile(
     r"^\s*(?:(?:d|cd|disc)\s*(\d)\s*[-_.]?\s*)?(?:t(?:rack)?\s*)?(\d{1,2})"
     r"(?:\s*[.):,\-]\s*|\s+)(.+?)\s*$", re.I)
-DURATION = re.compile(r"\s*[\(\[]?\d{1,2}:\d{2}(?:[:.]\d{2})?[\)\]]?\s*$")
+DURATION = re.compile(r"\s*[\(\[{]?\d{1,3}:\d{2}(?:[:.]\d{1,3})?[\)\]}]?\s*$")
 JUNK = re.compile(r"\.(flac|shn|wav|mp3|ffp|md5)\b|[0-9a-f]{32}|\bkbps\b|\bkhz\b|\bhz\b|source:|lineage|taper|transfer|"
                   r"conversion|seeded|recorded by|\bmics?\b|\bdat\b|>\s*cd\b|sbd\s*>|aud\s*>", re.I)
 WORDNUM = {"one": 1, "two": 2, "three": 3, "four": 4, "i": 1, "ii": 2, "iii": 3, "iv": 4}
@@ -164,6 +164,9 @@ def clean_title(t):
     t = DURATION.sub("", t)
     t = re.sub(r"\s{2,}", " ", t).strip(" |")
     t = re.sub(r"^(?:e|encore)\s*[:\-]\s*", "", t, flags=re.I)      # "E: Christmas Song"
+    t = re.sub(r"^[\[(]?\s*(?:set|disc|cd)\s*\d+\s*[\])]?\s*[:\-]?\s*", "", t, flags=re.I)  # "[Set 1]Granny"
+    t = re.sub(r"^[.\-–—:)\]]+\s*", "", t)                        # ". Right Place, Wrong Time"
+    t = DURATION.sub("", t)
     segue = False
     for _ in range(4):                                            # "What Would You Say > &", "Seek Up>>"
         t2 = FOOTNOTE.sub("", t).rstrip()
@@ -278,6 +281,30 @@ def _fill_blanks(titles, tracks):
         out.append(title)
     return out
 
+GENERIC = re.compile(r"^(intro\w*|tuning|banter|crowd.*|interview|jam|dave ?speak|dead time|applause|"
+                     r"encore( break)?|talk\w*|noise|silence|filler|.*\bintro|intro to.*|band intro\w*|introductions?)$", re.I)
+PROSE = re.compile(r"\bchannel\b|drops? out|\bis cut\b|crossfad|\blabeled\b|\blevels?\b|glitch|splice|patched|"
+                   r"\bmissing\b|\bfixed\b|\bdropout|\bat \d|\bfrom \d|\d:\d\d|\btotal\b|\bdiscs\b|\bsource\b|"
+                   r"\bactual title\b|tape flip|\bcuts? in\b|\bI have\b|\bassume\b", re.I)
+
+def looks_wrong(titles):
+    """Return a reason if the proposed titles look like notes rather than songs."""
+    for t in titles:
+        if PROSE.search(t):
+            return f"note text instead of a song: \"{t[:60]}\""
+        words = t.split()
+        if len(words) >= 6 and t[0].islower() and ">" not in t:
+            return f"note text instead of a song: \"{t[:60]}\""
+    counts = defaultdict(int)
+    for t in titles:
+        if not GENERIC.match(t.strip(" >").lower()):
+            counts[t.strip(" >").lower()] += 1
+    if counts:
+        top, n = max(counts.items(), key=lambda kv: kv[1])
+        if n >= 3 and n > len(titles) * 0.15:
+            return f"\"{top}\" repeated on {n} tracks"
+    return None
+
 def album_name(album, almanac):
     date = album["date"]
     if not date:
@@ -329,8 +356,12 @@ def cmd_run(albums, args):
         if quiet:
             print(f"  …{n_done:,} of {len(chosen):,}", end="\r", flush=True)
         p = propose(a)
+        if p.get("titles"):
+            why = looks_wrong(p["titles"])
+            if why:
+                p = {"method": "review", "source": p.get("source"), "detail": why}
         name = album_name(a, almanac)
-        good = p["method"] not in ("mismatch", "none")
+        good = p["method"] not in ("mismatch", "none", "review")
         methods[p["method"] if good else ("skip: " + p["method"])] += 1
         mark = "✓" if good else "✗ SKIP"
         out(f"=== {a['date'] or '????-??-??'}  {a['folder'].name}  ({len(a['tracks'])} tracks)  {mark}")
