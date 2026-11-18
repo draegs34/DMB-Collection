@@ -13,6 +13,10 @@ Usage (run on the iMac that hosts Plex and the DMB Archive drive):
   python3 plex_titles.py --dates 2005-06-08 --sample 10 --seed 7 --apply
         Same selection (keep --seed the same as the dry run), but write the changes
         to Plex. Saves an undo file next to this script.
+  python3 plex_titles.py --all
+        DRY RUN on every untitled album: summary on screen, details in a report file.
+  python3 plex_titles.py --all --apply
+        Write every confident match to Plex (skipped albums are left alone).
   python3 plex_titles.py --undo plex_titles_undo_20261118-201500.json
         Put back exactly what an --apply run changed.
 
@@ -302,32 +306,46 @@ def cmd_run(albums, args):
     if not almanac:
         print("⚠  dmb_almanac.json not found next to this script — album names will have no venue.")
     want_dates = {d.strip() for d in (args.dates or "").split(",") if d.strip()}
-    chosen = [a for a in albums if a["date"] in want_dates and album_untitled(a)]
-    pool = sorted([a for a in albums if album_untitled(a) and a not in chosen], key=lambda a: str(a["folder"]))
-    random.Random(args.seed).shuffle(pool)
-    chosen += pool[:args.sample]
+    if args.all:
+        chosen = sorted([a for a in albums if album_untitled(a)], key=lambda a: (a["date"] or "9999", str(a["folder"])))
+    else:
+        chosen = [a for a in albums if a["date"] in want_dates and album_untitled(a)]
+        pool = sorted([a for a in albums if album_untitled(a) and a not in chosen], key=lambda a: str(a["folder"]))
+        random.Random(args.seed).shuffle(pool)
+        chosen += pool[:args.sample]
     if not chosen:
         print("Nothing selected — check --dates / --sample.")
         return
 
     undo, ok, skipped = [], 0, 0
-    print(f"\n{'APPLYING' if args.apply else 'DRY RUN'} — {len(chosen)} album(s)\n")
-    for a in chosen:
+    quiet = len(chosen) > 25 and not args.verbose
+    report, methods, skips = [], defaultdict(int), []
+    def out(line=""):
+        report.append(line)
+        if not quiet:
+            print(line)
+    print(f"\n{'APPLYING' if args.apply else 'DRY RUN'} — {len(chosen):,} album(s)" + (" (details go to the report file)" if quiet else "") + "\n")
+    for n_done, a in enumerate(chosen, 1):
+        if quiet:
+            print(f"  …{n_done:,} of {len(chosen):,}", end="\r", flush=True)
         p = propose(a)
         name = album_name(a, almanac)
         good = p["method"] not in ("mismatch", "none")
+        methods[p["method"] if good else ("skip: " + p["method"])] += 1
         mark = "✓" if good else "✗ SKIP"
-        print(f"=== {a['date'] or '????-??-??'}  {a['folder'].name}  ({len(a['tracks'])} tracks)  {mark}")
-        print(f"    match: {p['method']}" + (f" — from {p['source']}" if p.get('source') else "")
-              + (f" — {p['detail']}" if p.get('detail') else ""))
+        out(f"=== {a['date'] or '????-??-??'}  {a['folder'].name}  ({len(a['tracks'])} tracks)  {mark}")
+        out(f"    folder: {a['folder']}")
+        out(f"    match: {p['method']}" + (f" — from {p['source']}" if p.get('source') else "")
+            + (f" — {p['detail']}" if p.get('detail') else ""))
         if not good:
             skipped += 1
-            print()
+            skips.append(f"{a['date'] or '????-??-??'}  {a['folder'].name}  — {p.get('detail', p['method'])}")
+            out()
             continue
-        print(f"    album: \"{a['album_title']}\"  →  \"{name}\"")
+        out(f"    album: \"{a['album_title']}\"  →  \"{name}\"")
         for i, (t, new) in enumerate(zip(a["tracks"], p["titles"]), 1):
-            print(f"    {i:>3}. {Path(t['file']).name:<40} → {new}")
-        print()
+            out(f"    {i:>3}. {Path(t['file']).name:<40} → {new}")
+        out()
         if args.apply:
             rec = {"album": a["key"], "album_title": a["album_title"], "tracks": []}
             if name:
@@ -339,7 +357,15 @@ def cmd_run(albums, args):
             undo.append(rec)
         ok += 1
 
-    print(f"Summary: {ok} ready{' and applied' if args.apply else ''}, {skipped} skipped (need review).")
+    if quiet:
+        print()
+    print(f"Summary: {ok:,} ready{' and applied' if args.apply else ''}, {skipped:,} skipped (need review).")
+    for k, v in sorted(methods.items(), key=lambda kv: -kv[1]):
+        print(f"   {v:>6,}  {k}")
+    if report and (quiet or args.report):
+        rf = HERE / f"plex_titles_report_{datetime.now():%Y%m%d-%H%M%S}.txt"
+        rf.write_text("\n".join(report) + "\n\nSKIPPED\n" + "\n".join(skips) + "\n")
+        print(f"Full report: {rf.name}   (open -e {rf.name})")
     if args.apply and undo:
         f = HERE / f"plex_titles_undo_{datetime.now():%Y%m%d-%H%M%S}.json"
         f.write_text(json.dumps(undo, indent=1))
@@ -365,6 +391,9 @@ if __name__ == "__main__":
     ap.add_argument("--dates", help="comma-separated show dates to include, e.g. 2005-06-08,1999-05-12")
     ap.add_argument("--sample", type=int, default=0, help="also include N random untitled albums")
     ap.add_argument("--seed", type=int, default=1, help="random seed for --sample (reuse it with --apply)")
+    ap.add_argument("--all", action="store_true", help="every album that still has file-name titles")
+    ap.add_argument("--verbose", action="store_true", help="print every album even on big runs")
+    ap.add_argument("--report", action="store_true", help="always save a report file")
     ap.add_argument("--apply", action="store_true", help="write the changes to Plex")
     ap.add_argument("--undo", metavar="FILE", help="restore from an undo file")
     args = ap.parse_args()
@@ -375,7 +404,7 @@ if __name__ == "__main__":
         sys.exit()
     print("🎧 Reading tracks from Plex…")
     albums = build_albums(all_tracks())
-    if args.scan or not (args.dates or args.sample):
+    if args.scan or not (args.dates or args.sample or args.all):
         cmd_scan(albums)
     else:
         cmd_run(albums, args)
