@@ -432,6 +432,17 @@ def _align(tracks, songs, partial=False):
         i -= 1
     return plan[::-1]
 
+def _drop_teases(songs):
+    """Teases happen inside other songs, never on their own track."""
+    out = []
+    for t, d, seg in songs:
+        if re.search(r"\[tease\]", t, re.I):
+            if out and out[-1][2]:
+                out[-1] = [out[-1][0], out[-1][1], seg]   # X > tease > Y  →  X > Y
+            continue
+        out.append([t, d, seg])
+    return out
+
 def almanac_propose(album, almanac):
     shows = almanac.get(album["date"] or "", [])
     if not shows or album.get("disc"):
@@ -441,6 +452,9 @@ def almanac_propose(album, almanac):
     tried, review = [], None
     for show in shows:
         songs = almanac_setlist(show["url"]) if show.get("url") else None
+        if not songs:
+            continue
+        songs = _drop_teases(songs)
         if not songs:
             continue
         m = len(songs)
