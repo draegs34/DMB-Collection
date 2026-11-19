@@ -819,6 +819,23 @@ def main():
     git_push(updated_html)
     fix_plex_titles()
     fix_plex_covers()
+    refresh_plex_playlists()
+
+# ── Plex year playlists ───────────────────────────────────────────────────────
+
+def refresh_plex_playlists():
+    """Keep the "DMB <year>" playlists in Plex current (plex_playlists.py --daily)."""
+    script = Path(__file__).resolve().parent / "plex_playlists.py"
+    if not script.exists() or not PLEX_TOKEN:
+        return
+    print("\n🎶 Refreshing Plex year playlists…")
+    try:
+        r = subprocess.run([sys.executable, str(script), "--daily"],
+                           capture_output=True, text=True, timeout=3600)
+        out = (r.stdout or "").strip() or (r.stderr or "").strip()
+        print("  " + out.replace("\n", "\n  ") if out else "  (no output)")
+    except Exception as e:
+        print(f"⚠  Plex playlist refresh skipped: {e}")
 
 # ── Plex covers for new recordings ────────────────────────────────────────────
 
