@@ -101,7 +101,8 @@ def build_albums(tracks):
         a["key"] = t.get("parentRatingKey")
         a["album_title"] = t.get("parentTitle", "")
         a["tracks"].append({"key": t["ratingKey"], "title": t.get("title", ""),
-                            "index": t.get("index"), "file": f})
+                            "index": t.get("index"), "file": f,
+                            "secs": (t.get("duration") or 0) / 1000})
     for a in albums.values():
         a["tracks"].sort(key=lambda x: natural_key(x["file"]))
         dirs = {str(Path(x["file"]).parent) for x in a["tracks"]}
@@ -318,6 +319,160 @@ def album_name(album, almanac):
     return name + (f" (Disc {album['disc']})" if album.get("disc") else "")
 
 
+# ── DMBAlmanac setlists (for folders without a usable info file) ────────────
+ALM_CACHE = HERE / "plex_titles_almanac_cache.json"
+_alm_cache = None
+
+def _load_cache():
+    global _alm_cache
+    if _alm_cache is None:
+        _alm_cache = json.loads(ALM_CACHE.read_text()) if ALM_CACHE.exists() else {}
+    return _alm_cache
+
+def _secs(txt):
+    m = re.search(r"(\d+):(\d{2})(?::(\d{2}))?", txt or "")
+    if not m:
+        return None
+    a, b, c = m.groups()
+    return int(a) * 3600 + int(b) * 60 + int(c) if c else int(a) * 60 + int(b)
+
+def almanac_setlist(url):
+    """[(title, seconds or None, segue_into_next)] from a DMBAlmanac show page (cached)."""
+    cache = _load_cache()
+    if url in cache:
+        return cache[url]
+    import time
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return None
+    time.sleep(1.0)                                   # be polite to dmbalmanac.com
+    try:
+        r = requests.get(url, headers={"User-Agent": "DMB-Collection-Scanner/2.0 (personal hobby project)"}, timeout=30)
+        r.raise_for_status()
+    except Exception as e:
+        print(f"\n⚠  DMBAlmanac fetch failed ({e})")
+        return None
+    soup = BeautifulSoup(r.text, "html.parser")
+    out = []
+    for tr in soup.select("#SetTable tr"):
+        song = tr.select_one("td.sticky-song a.lightorange")
+        if not song:
+            continue
+        item = tr.select_one("span.setitem")
+        dur = None
+        for td in tr.select("td.setcell"):
+            dur = _secs(td.get_text())
+            if dur:
+                break
+        out.append([song.get_text(strip=True), dur, bool(item and "»" in item.get_text())])
+    cache[url] = out
+    ALM_CACHE.write_text(json.dumps(cache))
+    return out
+
+def _best_extras(tracks, songs):
+    """Pick which tracks are extras (intro/banter/encore break) by lining up track
+    lengths with DMBAlmanac song lengths, keeping order. Extras must be short."""
+    n, m = len(tracks), len(songs)
+    INF = float("inf")
+    dp = [[INF] * (m + 1) for _ in range(n + 1)]
+    back = [[None] * (m + 1) for _ in range(n + 1)]
+    dp[0][0] = 0.0
+    for i in range(1, n + 1):
+        secs = tracks[i - 1]["secs"]
+        for j in range(0, min(i, m) + 1):
+            # track i is an extra
+            if dp[i - 1][j] < INF and 0 < secs < 150:
+                c = dp[i - 1][j] + 0.05
+                if c < dp[i][j]:
+                    dp[i][j], back[i][j] = c, "x"
+            # track i is song j
+            if j and dp[i - 1][j - 1] < INF:
+                d = songs[j - 1][1]
+                cost = abs(secs - d) / max(d, 60) if (d and secs) else 0.3
+                c = dp[i - 1][j - 1] + cost
+                if c < dp[i][j]:
+                    dp[i][j], back[i][j] = c, "s"
+    if dp[n][m] == INF:
+        return None
+    extra, i, j = set(), n, m
+    while i:
+        if back[i][j] == "x":
+            extra.add(i - 1)
+        else:
+            j -= 1
+        i -= 1
+    return extra
+
+def almanac_propose(album, almanac):
+    shows = almanac.get(album["date"] or "", [])
+    if not shows or album.get("disc"):
+        return None
+    tracks = album["tracks"]
+    n = len(tracks)
+    tried = []
+    for show in shows:
+        songs = almanac_setlist(show["url"]) if show.get("url") else None
+        if not songs:
+            continue
+        m = len(songs)
+        tried.append(m)
+        titles = None
+        if n == m:
+            titles = [t + (" >" if seg else "") for t, _, seg in songs]
+            durs = [d for _, d, _ in songs]
+            how = "DMBAlmanac, same count"
+        elif n > m:
+            k = n - m                                  # extra short tracks: intro / banter / encore break
+            extra = _best_extras(tracks, songs)
+            if extra is not None:
+                it = iter(songs)
+                titles, durs = [], []
+                for i in range(n):
+                    if i in extra:
+                        titles.append("Intro" if i == 0 else ("Encore Break" if i >= n - 3 else "Banter"))
+                        durs.append(None)
+                    else:
+                        t, d, seg = next(it)
+                        titles.append(t + (" >" if seg else ""))
+                        durs.append(d)
+                how = f"DMBAlmanac + {k} short extra track(s)"
+        else:
+            segs = [i for i, (_, _, seg) in enumerate(songs[:-1]) if seg]
+            if len(segs) == m - n:                     # segued songs share one track
+                titles, durs, i = [], [], 0
+                while i < m:
+                    t, d, seg = songs[i]
+                    name, total = t, d or 0
+                    while seg and i + 1 < m:
+                        i += 1
+                        t2, d2, seg = songs[i]
+                        name += " > " + t2
+                        total += d2 or 0
+                    titles.append(name)
+                    durs.append(total or None)
+                    i += 1
+                how = "DMBAlmanac, segues combined"
+        if not titles or len(titles) != n:
+            continue
+        # sanity check against song lengths listed on DMBAlmanac
+        pairs = [(t["secs"], d) for t, d in zip(tracks, durs) if d and t["secs"] and d >= 120]
+        if pairs:
+            off = sorted(abs(a - b) / b for a, b in pairs)
+            median = off[len(off) // 2]
+            if median > 0.20 or off[-1] > 0.45:
+                return {"method": "review", "source": "DMBAlmanac",
+                        "detail": f"track lengths don't line up with DMBAlmanac (median {median:.0%} off)"}
+            how += f", lengths check out ({len(pairs)} songs)"
+        elif n != m:
+            continue                                   # no lengths to verify a fuzzy match
+        return {"method": how, "source": "DMBAlmanac", "titles": titles}
+    if tried:
+        return {"method": "mismatch", "source": "DMBAlmanac",
+                "detail": f"DMBAlmanac lists {'/'.join(map(str, tried))} songs, folder has {n} tracks"}
+    return None
+
+
 # ── Commands ─────────────────────────────────────────────────────────────────
 def cmd_scan(albums):
     bad = [a for a in albums if album_untitled(a)]
@@ -356,6 +511,13 @@ def cmd_run(albums, args):
         if quiet:
             print(f"  …{n_done:,} of {len(chosen):,}", end="\r", flush=True)
         p = propose(a)
+        if p["method"] in ("mismatch", "none") and not args.no_almanac:
+            alt = almanac_propose(a, almanac)
+            if alt:
+                if alt.get("titles") or alt["method"] == "review":
+                    p = alt
+                else:
+                    p = {**p, "detail": (p.get("detail", "") + "; " + alt["detail"]).strip("; ")}
         if p.get("titles"):
             why = looks_wrong(p["titles"])
             if why:
@@ -425,6 +587,7 @@ if __name__ == "__main__":
     ap.add_argument("--all", action="store_true", help="every album that still has file-name titles")
     ap.add_argument("--verbose", action="store_true", help="print every album even on big runs")
     ap.add_argument("--report", action="store_true", help="always save a report file")
+    ap.add_argument("--no-almanac", action="store_true", help="don't fall back to DMBAlmanac setlists")
     ap.add_argument("--apply", action="store_true", help="write the changes to Plex")
     ap.add_argument("--undo", metavar="FILE", help="restore from an undo file")
     args = ap.parse_args()
