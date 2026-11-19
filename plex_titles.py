@@ -64,7 +64,7 @@ def plex_put(rating_key, params):
     r = requests.put(f"{PLEX_URL}/library/metadata/{rating_key}", params=p, timeout=60)
     r.raise_for_status()
 
-def all_tracks():
+def all_tracks(show_progress=True):
     """Every track in the music library, fetched in pages (one big request times out)."""
     out, start, PAGE = [], 0, 2000
     while True:
@@ -74,10 +74,12 @@ def all_tracks():
         out.extend(batch)
         start += len(batch)
         total = int(mc.get("totalSize", 0) or 0)
-        print(f"  …{start:,}{f' of {total:,}' if total else ''} tracks", end="\r", flush=True)
+        if show_progress:
+            print(f"  …{start:,}{f' of {total:,}' if total else ''} tracks", end="\r", flush=True)
         if not batch or len(batch) < PAGE or (total and start >= total):
             break
-    print()
+    if show_progress:
+        print()
     return out
 
 
@@ -346,7 +348,7 @@ def _secs(txt):
 def almanac_setlist(url):
     """[(title, seconds or None, segue_into_next)] from a DMBAlmanac show page (cached)."""
     cache = _load_cache()
-    if url in cache:
+    if cache.get(url):
         return cache[url]
     import time
     try:
@@ -373,8 +375,9 @@ def almanac_setlist(url):
             if dur:
                 break
         out.append([song.get_text(strip=True), dur, bool(item and "»" in item.get_text())])
-    cache[url] = out
-    ALM_CACHE.write_text(json.dumps(cache))
+    if len(out) >= 3:                                  # don't remember empty/unfinished setlists
+        cache[url] = out
+        ALM_CACHE.write_text(json.dumps(cache))
     return out
 
 def _fits(t, d):
@@ -534,15 +537,16 @@ def cmd_run(albums, args):
         return
 
     undo, ok, skipped = [], 0, 0
-    quiet = len(chosen) > 25 and not args.verbose
+    quiet = (len(chosen) > 25 and not args.verbose) or args.daily
     report, methods, skips = [], defaultdict(int), []
     def out(line=""):
         report.append(line)
         if not quiet:
             print(line)
-    print(f"\n{'APPLYING' if args.apply else 'DRY RUN'} — {len(chosen):,} album(s)" + (" (details go to the report file)" if quiet else "") + "\n")
+    if not args.daily:
+        print(f"\n{'APPLYING' if args.apply else 'DRY RUN'} — {len(chosen):,} album(s)" + (" (details go to the report file)" if quiet else "") + "\n")
     for n_done, a in enumerate(chosen, 1):
-        if quiet:
+        if quiet and not args.daily:
             print(f"  …{n_done:,} of {len(chosen):,}", end="\r", flush=True)
         p = propose(a)
         if p["method"] in ("mismatch", "none") and not args.no_almanac:
@@ -584,6 +588,16 @@ def cmd_run(albums, args):
             undo.append(rec)
         ok += 1
 
+    if args.daily:
+        print(f"Plex titles: {ok:,} album(s) fixed, {skipped:,} still need review.")
+        for line in report:
+            if line.startswith("=== ") and line.endswith("✓"):
+                print("   " + line[4:].rsplit("  (", 1)[0])
+        if args.apply and undo:
+            f = HERE / f"plex_titles_undo_{datetime.now():%Y%m%d-%H%M%S}.json"
+            f.write_text(json.dumps(undo, indent=1))
+            print(f"   Undo file: {f.name}")
+        return
     if quiet:
         print()
     print(f"Summary: {ok:,} ready{' and applied' if args.apply else ''}, {skipped:,} skipped (need review).")
@@ -623,15 +637,19 @@ if __name__ == "__main__":
     ap.add_argument("--report", action="store_true", help="always save a report file")
     ap.add_argument("--no-almanac", action="store_true", help="don't fall back to DMBAlmanac setlists")
     ap.add_argument("--apply", action="store_true", help="write the changes to Plex")
+    ap.add_argument("--daily", action="store_true", help="for daily_update.py: --all --apply with a short summary")
     ap.add_argument("--undo", metavar="FILE", help="restore from an undo file")
     args = ap.parse_args()
 
+    if args.daily:
+        args.all = args.apply = True
     TOKEN = token()
     if args.undo:
         cmd_undo(args.undo)
         sys.exit()
-    print("🎧 Reading tracks from Plex…")
-    albums = build_albums(all_tracks())
+    if not args.daily:
+        print("🎧 Reading tracks from Plex…")
+    albums = build_albums(all_tracks(show_progress=not args.daily))
     if args.scan or not (args.dates or args.sample or args.all):
         cmd_scan(albums)
     else:

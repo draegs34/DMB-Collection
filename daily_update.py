@@ -817,6 +817,24 @@ def main():
     else:
         print(f"\n✅ Done — footer and charts updated ({run_ts}).")
     git_push(updated_html)
+    fix_plex_titles()
+
+# ── Plex titles for new recordings ────────────────────────────────────────────
+
+def fix_plex_titles():
+    """Give new recordings real song titles in Plex (plex_titles.py --daily).
+    Only Plex's database changes; audio files are never touched."""
+    script = Path(__file__).resolve().parent / "plex_titles.py"
+    if not script.exists() or not PLEX_TOKEN:
+        return
+    print("\n🏷  Checking Plex for untitled recordings…")
+    try:
+        r = subprocess.run([sys.executable, str(script), "--daily"],
+                           capture_output=True, text=True, timeout=3600)
+        out = (r.stdout or "").strip() or (r.stderr or "").strip()
+        print("  " + out.replace("\n", "\n  ") if out else "  (no output)")
+    except Exception as e:
+        print(f"⚠  Plex title fix skipped: {e}")
 
 # ── GitHub Pages push ─────────────────────────────────────────────────────────
 
