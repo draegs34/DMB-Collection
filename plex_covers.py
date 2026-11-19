@@ -98,8 +98,12 @@ def palette(year):
 
 def make_cover(show, badge=True):
     """show: date, venue, city, tour, lineage, disc, attended"""
-    dt = date.fromisoformat(show["date"])
-    c = palette(dt.year)
+    y, mo, dy = (int(x) for x in show["date"].split("-"))
+    try:
+        dt = date(y, mo, dy)
+    except ValueError:                                   # 1990-10-00, 1991-00-00
+        dt = None
+    c = palette(y)
     im = Image.new("RGBA", (W, W), c(0.13, 0.45))
     top = Image.new("RGBA", (W, 330), c(0.22, 0.5))
     ray_layer = Image.new("RGBA", (W, 330), (0, 0, 0, 0))
@@ -115,7 +119,7 @@ def make_cover(show, badge=True):
     im.alpha_composite(top, (0, 0))
     d = ImageDraw.Draw(im)
 
-    yy = str(dt.year)
+    yy = str(y)
     fy = F(SERIFB, 230)
     d.text(((W - d.textlength(yy, font=fy)) / 2, 40), yy, font=fy, fill=c(0.7, 0.6))
     center(d, 350, "DAVE MATTHEWS BAND", F(SERIFB, 40), c(0.75, 0.4))
@@ -129,9 +133,14 @@ def make_cover(show, badge=True):
     if show.get("city"):
         center(d, yv + 10, show["city"], fit(d, show["city"], SERIF, 44, W - 160), c(0.8, 0.3))
 
-    ds = dt.strftime("%B %-d, %Y").upper()
+    if dt:
+        ds, day = dt.strftime("%B %-d, %Y").upper(), dt.strftime("%A")
+    elif 1 <= mo <= 12:
+        ds, day = date(y, mo, 1).strftime("%B %Y").upper(), "Date unknown"
+    else:
+        ds, day = str(y), "Date unknown"
     center(d, 760, ds, F(SERIF, 46), (255, 255, 255, 255))
-    sub = dt.strftime("%A") + (f" · {show['tour']}" if show.get("tour") else "")
+    sub = day + (f" · {show['tour']}" if show.get("tour") else "")
     center(d, 820, sub, fit(d, sub, SERIF, 30, W - 160), c(0.7, 0.35))
     foot = " · ".join(x for x in [show.get("lineage"), f"Disc {show['disc']}" if show.get("disc") else ""] if x)
     if foot:
