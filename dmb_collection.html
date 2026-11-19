@@ -422,8 +422,6 @@ body.dark .notif-gap { background:#0d3020; border-color:#1a5030; }
 .bx-rec .c-notes.full{display:block}
 .bx-rec .c-folder{grid-column:1/4;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#6b6a64;word-break:break-all}
 .bx-foot{margin-top:12px;font-size:13px;color:#5f5e58;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.bx-foot a.bx-alm{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 16px;border-radius:8px;background:#185FA5;color:#fff;font-size:14px;font-weight:600;text-decoration:none}
-.bx-foot a.bx-alm:hover{background:#0f4a85}
 .bx-empty,.bx-more-note{text-align:center;padding:36px 16px;color:#6b6a64;font-size:14px}
 .bx-pick-bg{display:none}
 .bx-pick{position:fixed;z-index:600;width:380px;max-width:calc(100vw - 24px);background:#fff;border:1px solid #e0dfd7;border-radius:12px;box-shadow:0 12px 32px rgba(26,26,24,.18);overflow:hidden;display:none;box-sizing:border-box}
@@ -453,7 +451,6 @@ body.dark .bx-seg .sort-btn{color:#aaa}
 body.dark .bx-seg .sort-btn.active{background:#3a3a38;color:#e8e7e2}
 body.dark .bx-track{background:#444441}
 body.dark .bx-ico,body.dark .bx-rec .c-play a{color:#5fa8e8}
-body.dark .bx-foot a.bx-alm{background:#1f5fa0;color:#fff}
 body.dark .bx-ico:hover,body.dark .bx-show.open .bx-exp,body.dark .bx-rec .c-play a:hover{background:#1a3050}
 body.dark .bx-legend{color:#ccc}
 body.dark .bx-legend i{background:#2b2312;border-color:#5a4500}
@@ -546,8 +543,6 @@ body.dark .bx-ms-clear{color:#5fa8e8;border-bottom-color:#2a2a28}
   .bx-rec .k{display:inline;color:#5f5e58}
   .bx-rec .c-notes,.bx-rec .c-folder{grid-column:1}
   .bx-rec+.bx-rec{border-top-color:#e7e6df}
-  .bx-foot{margin:8px 0 6px}
-  .bx-foot a.bx-alm{min-height:44px;padding:0 18px;font-size:15px}
   .bx-pick{left:0!important;right:0;bottom:0;top:auto!important;width:auto;max-width:none;border:none;border-radius:20px 20px 0 0;padding-bottom:20px}
   .bx-pick-bg.show{display:block;position:fixed;inset:0;background:rgba(26,26,24,.45);z-index:599}
   .bx-pick-h{padding:16px 18px 8px}
@@ -1107,7 +1102,7 @@ function bxShowHTML(date,recs){
       <div class="c-folder">${bxEsc(s[11])}</div>
     </div>`;
   }).join('');
-  const foot=alm?`<div class="bx-foot"><a class="bx-alm" href="${alm.url}" target="_blank" rel="noopener">DMBAlmanac<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M14 4h6v6"/><path d="M10 14 20 4"/><path d="M20 14v6H4V4h6"/></svg></a>${alm.tour?`<span>${bxEsc(alm.tour)} tour</span>`:''}</div>`:'';
+  const foot='';   // setlist link lives in the row's Setlist button; tour is in the city line
   return `<div class="bx-show${att?' att':''}" data-date="${bxEsc(date)}">
     <div class="bx-row"><div class="bx-date">${dateHTML}</div><div class="bx-info">${where}</div><div class="bx-pills">${pills.join('')}</div><div class="bx-acts">${play}${set}${exp}</div></div>
     <div class="bx-detail"><div class="bx-recs"><div class="bx-rec-head"><span>FORMAT</span><span>SOURCE</span><span>TAPER / MIC</span><span></span></div>${recRows}</div>${foot}</div>
