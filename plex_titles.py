@@ -382,7 +382,7 @@ def _fits(t, d):
     Tapes run longer (crowd, tuning, banter), rarely much shorter."""
     return 0.75 * d - 20 <= t <= 1.5 * d + 90
 
-def _align(tracks, songs):
+def _align(tracks, songs, partial=False):
     """Line tracks up with DMBAlmanac songs, in order. A track can be an extra
     (short: intro/banter/encore break) or carry 1-4 songs joined by segues.
     Returns [(kind, [song indexes])] per track, or None."""
@@ -390,12 +390,16 @@ def _align(tracks, songs):
     INF = float("inf")
     dp = [[INF] * (m + 1) for _ in range(n + 1)]
     back = [[None] * (m + 1) for _ in range(n + 1)]
-    dp[0][0] = 0.0
+    SKIP = 0.6                                                             # per setlist song the tape doesn't have
+    for j in range(m + 1):
+        dp[0][j] = SKIP * j if partial else (0.0 if j == 0 else INF)
     for i in range(1, n + 1):
         secs = tracks[i - 1]["secs"]
         for j in range(0, m + 1):
-            if dp[i - 1][j] < INF and 0 < secs < 150:                     # extra track
-                c = dp[i - 1][j] + 0.4
+            if dp[i - 1][j] < INF and 0 < secs < 300:                     # extra track
+                c = dp[i - 1][j] + (0.4 if secs < 150 else 1.2)
+                if 0 < j < m and songs[j - 1][2]:
+                    c += 2.5                                               # never a break inside a segue
                 if c < dp[i][j]:
                     dp[i][j], back[i][j] = c, ("x", j)
             for k in range(1, 5):                                          # track = songs j-k..j-1
@@ -414,9 +418,13 @@ def _align(tracks, songs):
                 c = dp[i - 1][j0] + cost
                 if c < dp[i][j]:
                     dp[i][j], back[i][j] = c, ("s", j0)
-    if dp[n][m] == INF:
+    if partial:
+        j_end = min(range(m + 1), key=lambda j: dp[n][j] + SKIP * (m - j))
+    else:
+        j_end = m
+    if dp[n][j_end] == INF:
         return None
-    plan, i, j = [], n, m
+    plan, i, j = [], n, j_end
     while i:
         kind, j0 = back[i][j]
         plan.append(("x", []) if kind == "x" else ("s", list(range(j0, j))))
@@ -441,7 +449,13 @@ def almanac_propose(album, almanac):
         if not timed and n != m:
             continue                                   # can't line up an uneven count without song lengths
         plan = _align(tracks, songs)
-        if not plan:
+        part = None
+        if not plan and timed and n >= 4:
+            plan = _align(tracks, songs, partial=True)     # one set / cut-off tape
+            if plan:
+                used = [q for _, qs in plan for q in qs]
+                part = (min(used) + 1, max(used) + 1) if used else None
+        if not plan or (part is None and plan and not any(qs for _, qs in plan)):
             continue
         titles, checks, extras, merged = [], [], 0, 0
         for idx, (kind, qs) in enumerate(plan):
@@ -455,10 +469,13 @@ def almanac_propose(album, almanac):
             ds = [songs[q][1] for q in qs]
             if all(ds) and sum(ds) >= 120 and tracks[idx]["secs"]:
                 checks.append(_fits(tracks[idx]["secs"], sum(ds)))
-        how = "DMBAlmanac" + (f", {extras} extra track(s)" if extras else "") + (f", {merged} segue(s) combined" if merged else "")
+        how = "DMBAlmanac" + (f", partial: setlist songs {part[0]}–{part[1]} of {m}" if part else "") \
+              + (f", {extras} extra track(s)" if extras else "") + (f", {merged} segue(s) combined" if merged else "")
+        if part and (len(checks) < 4 or extras > max(1, n // 6)):
+            continue                                   # too little to trust a partial match
         if checks:
             rate = sum(checks) / len(checks)
-            if rate < 0.85:
+            if rate < (0.9 if part else 0.85):
                 review = {"method": "review", "source": "DMBAlmanac",
                           "detail": f"only {rate:.0%} of track lengths fit DMBAlmanac's song lengths"}
                 continue
