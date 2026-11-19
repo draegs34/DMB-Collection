@@ -203,7 +203,14 @@ def parse_setlist(text):
         m = SONG_LINE.match(line)
         if not m:
             continue
-        d, num, title = m.group(1), int(m.group(2)), clean_title(m.group(3))
+        d, num, raw = m.group(1), int(m.group(2)), m.group(3)
+        if not re.search(r"[a-z0-9#]", raw, re.I):        # "==========" (encore break line)
+            if d:
+                disc = int(d)
+            out.append((disc, num, ""))
+            last_num = num
+            continue
+        title = clean_title(raw)
         if len(title) > 90 or JUNK.search(title) or re.fullmatch(r"[\d:.\s]*", title):
             continue
         if not re.search(r"[a-z0-9#]", title, re.I):
@@ -370,9 +377,15 @@ def almanac_setlist(url):
     ALM_CACHE.write_text(json.dumps(cache))
     return out
 
-def _best_extras(tracks, songs):
-    """Pick which tracks are extras (intro/banter/encore break) by lining up track
-    lengths with DMBAlmanac song lengths, keeping order. Extras must be short."""
+def _fits(t, d):
+    """Is a track of t seconds plausibly a song DMBAlmanac times at d seconds?
+    Tapes run longer (crowd, tuning, banter), rarely much shorter."""
+    return 0.75 * d - 20 <= t <= 1.5 * d + 90
+
+def _align(tracks, songs):
+    """Line tracks up with DMBAlmanac songs, in order. A track can be an extra
+    (short: intro/banter/encore break) or carry 1-4 songs joined by segues.
+    Returns [(kind, [song indexes])] per track, or None."""
     n, m = len(tracks), len(songs)
     INF = float("inf")
     dp = [[INF] * (m + 1) for _ in range(n + 1)]
@@ -380,29 +393,36 @@ def _best_extras(tracks, songs):
     dp[0][0] = 0.0
     for i in range(1, n + 1):
         secs = tracks[i - 1]["secs"]
-        for j in range(0, min(i, m) + 1):
-            # track i is an extra
-            if dp[i - 1][j] < INF and 0 < secs < 150:
-                c = dp[i - 1][j] + 0.05
+        for j in range(0, m + 1):
+            if dp[i - 1][j] < INF and 0 < secs < 150:                     # extra track
+                c = dp[i - 1][j] + 0.4
                 if c < dp[i][j]:
-                    dp[i][j], back[i][j] = c, "x"
-            # track i is song j
-            if j and dp[i - 1][j - 1] < INF:
-                d = songs[j - 1][1]
-                cost = abs(secs - d) / max(d, 60) if (d and secs) else 0.3
-                c = dp[i - 1][j - 1] + cost
+                    dp[i][j], back[i][j] = c, ("x", j)
+            for k in range(1, 5):                                          # track = songs j-k..j-1
+                j0 = j - k
+                if j0 < 0 or dp[i - 1][j0] == INF:
+                    continue
+                if k > 1 and not all(songs[q][2] for q in range(j0, j - 1)):
+                    break                                                  # only segued songs share a track
+                ds = [songs[q][1] for q in range(j0, j)]
+                if all(ds) and secs:
+                    D = sum(ds)
+                    cost = 0.0 if _fits(secs, D) else min(abs(secs - D) / max(D, 60), 3.0) + 0.5
+                else:
+                    cost = 0.3
+                cost += 0.15 * (k - 1)
+                c = dp[i - 1][j0] + cost
                 if c < dp[i][j]:
-                    dp[i][j], back[i][j] = c, "s"
+                    dp[i][j], back[i][j] = c, ("s", j0)
     if dp[n][m] == INF:
         return None
-    extra, i, j = set(), n, m
+    plan, i, j = [], n, m
     while i:
-        if back[i][j] == "x":
-            extra.add(i - 1)
-        else:
-            j -= 1
+        kind, j0 = back[i][j]
+        plan.append(("x", []) if kind == "x" else ("s", list(range(j0, j))))
+        j = j0 if kind == "s" else j
         i -= 1
-    return extra
+    return plan[::-1]
 
 def almanac_propose(album, almanac):
     shows = almanac.get(album["date"] or "", [])
@@ -410,63 +430,46 @@ def almanac_propose(album, almanac):
         return None
     tracks = album["tracks"]
     n = len(tracks)
-    tried = []
+    tried, review = [], None
     for show in shows:
         songs = almanac_setlist(show["url"]) if show.get("url") else None
         if not songs:
             continue
         m = len(songs)
         tried.append(m)
-        titles = None
-        if n == m:
-            titles = [t + (" >" if seg else "") for t, _, seg in songs]
-            durs = [d for _, d, _ in songs]
-            how = "DMBAlmanac, same count"
-        elif n > m:
-            k = n - m                                  # extra short tracks: intro / banter / encore break
-            extra = _best_extras(tracks, songs)
-            if extra is not None:
-                it = iter(songs)
-                titles, durs = [], []
-                for i in range(n):
-                    if i in extra:
-                        titles.append("Intro" if i == 0 else ("Encore Break" if i >= n - 3 else "Banter"))
-                        durs.append(None)
-                    else:
-                        t, d, seg = next(it)
-                        titles.append(t + (" >" if seg else ""))
-                        durs.append(d)
-                how = f"DMBAlmanac + {k} short extra track(s)"
-        else:
-            segs = [i for i, (_, _, seg) in enumerate(songs[:-1]) if seg]
-            if len(segs) == m - n:                     # segued songs share one track
-                titles, durs, i = [], [], 0
-                while i < m:
-                    t, d, seg = songs[i]
-                    name, total = t, d or 0
-                    while seg and i + 1 < m:
-                        i += 1
-                        t2, d2, seg = songs[i]
-                        name += " > " + t2
-                        total += d2 or 0
-                    titles.append(name)
-                    durs.append(total or None)
-                    i += 1
-                how = "DMBAlmanac, segues combined"
-        if not titles or len(titles) != n:
+        timed = sum(1 for _, d, _ in songs if d) >= max(3, m * 0.6)
+        if not timed and n != m:
+            continue                                   # can't line up an uneven count without song lengths
+        plan = _align(tracks, songs)
+        if not plan:
             continue
-        # sanity check against song lengths listed on DMBAlmanac
-        pairs = [(t["secs"], d) for t, d in zip(tracks, durs) if d and t["secs"] and d >= 120]
-        if pairs:
-            off = sorted(abs(a - b) / b for a, b in pairs)
-            median = off[len(off) // 2]
-            if median > 0.20 or off[-1] > 0.45:
-                return {"method": "review", "source": "DMBAlmanac",
-                        "detail": f"track lengths don't line up with DMBAlmanac (median {median:.0%} off)"}
-            how += f", lengths check out ({len(pairs)} songs)"
+        titles, checks, extras, merged = [], [], 0, 0
+        for idx, (kind, qs) in enumerate(plan):
+            if kind == "x":
+                extras += 1
+                titles.append("Intro" if idx == 0 else ("Encore Break" if idx >= n - 3 else "Banter"))
+                continue
+            merged += len(qs) - 1
+            name = " > ".join(songs[q][0] for q in qs) + (" >" if songs[qs[-1]][2] else "")
+            titles.append(name)
+            ds = [songs[q][1] for q in qs]
+            if all(ds) and sum(ds) >= 120 and tracks[idx]["secs"]:
+                checks.append(_fits(tracks[idx]["secs"], sum(ds)))
+        how = "DMBAlmanac" + (f", {extras} extra track(s)" if extras else "") + (f", {merged} segue(s) combined" if merged else "")
+        if checks:
+            rate = sum(checks) / len(checks)
+            if rate < 0.85:
+                review = {"method": "review", "source": "DMBAlmanac",
+                          "detail": f"only {rate:.0%} of track lengths fit DMBAlmanac's song lengths"}
+                continue
+            how += f", lengths fit ({sum(checks)}/{len(checks)})"
         elif n != m:
-            continue                                   # no lengths to verify a fuzzy match
+            continue
+        else:
+            how += ", same count (no lengths to check)"
         return {"method": how, "source": "DMBAlmanac", "titles": titles}
+    if review:
+        return review
     if tried:
         return {"method": "mismatch", "source": "DMBAlmanac",
                 "detail": f"DMBAlmanac lists {'/'.join(map(str, tried))} songs, folder has {n} tracks"}
