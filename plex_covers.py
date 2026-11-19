@@ -305,8 +305,11 @@ def main():
             print(f"\n⚠  {a['date']} {a['folder'].name}: {e}")
             continue
         undo.append({"album": a["key"], "previous": prev})
-        state[str(a["key"])] = {"date": a["date"], "at": datetime.now().isoformat(timespec="seconds")}
+        state[str(a["key"])] = {"date": a["date"], "folder": a["folder"].name,
+                                "at": datetime.now().isoformat(timespec="seconds")}
         done += 1
+        if args.limit or args.dates or args.daily:
+            print(f"   {a['date']}  {a['folder'].name}" + ("  ★" if info.get("attended") else ""))
     state["_placeholders"] = sorted(known)
     if full_scan or args.daily:                     # remember albums whose real artwork we kept
         state["_keep"] = sorted(keep | {str(a["key"]) for a in todo
