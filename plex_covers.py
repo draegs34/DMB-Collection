@@ -166,6 +166,12 @@ def make_cover(show, badge=True):
 
 # ── Data about each show ─────────────────────────────────────────────────────
 def attended_dates():
+    saved = HERE / "attended_dates.json"
+    if saved.exists():
+        try:
+            return set(json.loads(saved.read_text()))
+        except Exception:
+            pass
     if not HTML_FILE.exists():
         return set()
     m = re.search(r"const ATTENDED_DATES=new Set\((\[.*?\])\)", HTML_FILE.read_text(errors="replace"), re.S)

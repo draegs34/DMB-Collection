@@ -802,10 +802,23 @@ def main():
     # ── Inject attended dates (slice replacement) ──────────────────────────────
     print(f"\n🎟  Scraping attended shows…")
     attended = scrape_attended()
+    saved = DASHBOARD_DIR / "attended_dates.json"
+    if attended:
+        saved.write_text(json.dumps(attended, indent=1) + "\n")
+    else:
+        # DMBAlmanac didn't answer (or returned nothing) — never wipe the list
+        try:
+            attended = json.loads(saved.read_text())
+            print(f"  → Using saved list instead: {len(attended)} attended show(s)")
+        except Exception:
+            attended = None
+            print("  → No saved list either — leaving the page's attended shows as they are")
     ad_marker = 'const ATTENDED_DATES=new Set('
     ad_start  = updated_html.find(ad_marker) + len(ad_marker)
     ad_end    = updated_html.find(');\n\nconst dateCounts=', ad_start)
-    if ad_end != -1:
+    if attended is None:
+        pass
+    elif ad_end != -1:
         updated_html = updated_html[:ad_start] + json.dumps(attended) + updated_html[ad_end:]
     else:
         print("⚠  ATTENDED_DATES end-marker not found — skipping injection")
