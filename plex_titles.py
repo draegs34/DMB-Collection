@@ -562,6 +562,8 @@ def cmd_run(albums, args):
                 p = {"method": "review", "source": p.get("source"), "detail": why}
         name = album_name(a, almanac)
         good = p["method"] not in ("mismatch", "none", "review")
+        if good and [t["title"] for t in a["tracks"]] == p["titles"] and (not name or name == a["album_title"]):
+            continue                                   # already has exactly these titles
         methods[p["method"] if good else ("skip: " + p["method"])] += 1
         mark = "✓" if good else "✗ SKIP"
         out(f"=== {a['date'] or '????-??-??'}  {a['folder'].name}  ({len(a['tracks'])} tracks)  {mark}")
