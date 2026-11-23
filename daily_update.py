@@ -37,6 +37,11 @@ PLEX_MACHINE_ID  = "341172425e0e6f0ff15189aa5ab8d1e0a2acd625"
 # ── Attended shows ────────────────────────────────────────────────────────────
 MEMBER_SHOWS_URL = "https://dmbalmanac.com/myalmanac/MyShows.aspx?number=1551"
 
+# ── DMBAlmanac access ─────────────────────────────────────────────────────────
+# False = never contact dmbalmanac.com: no 2026 tour scrape, attended shows come
+# from attended_dates.json, and the Plex title fix uses info files only.
+USE_DMBALMANAC = False
+
 # ── Optional deps ─────────────────────────────────────────────────────────────
 try:
     import requests
@@ -739,8 +744,12 @@ def main():
         print("  → No new recordings found")
 
     # ── Scrape new almanac entries ──
-    print(f"\n🌐 Scraping {CURRENT_YEAR} from dmbalmanac.com…")
-    new_alm = scrape_year_almanac(CURRENT_YEAR)
+    if USE_DMBALMANAC:
+        print(f"\n🌐 Scraping {CURRENT_YEAR} from dmbalmanac.com…")
+        new_alm = scrape_year_almanac(CURRENT_YEAR)
+    else:
+        print(f"\n🌐 DMBAlmanac turned off (USE_DMBALMANAC = False) — skipping {CURRENT_YEAR} tour scrape")
+        new_alm = {}
     new_alm_count = 0
     for date, info in new_alm.items():
         if date not in almanac:
@@ -800,8 +809,12 @@ def main():
         print("⚠  Plex map empty — keeping the existing Plex links in the page")
 
     # ── Inject attended dates (slice replacement) ──────────────────────────────
-    print(f"\n🎟  Scraping attended shows…")
-    attended = scrape_attended()
+    if USE_DMBALMANAC:
+        print(f"\n🎟  Scraping attended shows…")
+        attended = scrape_attended()
+    else:
+        print(f"\n🎟  Attended shows from attended_dates.json (DMBAlmanac turned off)")
+        attended = []
     saved = DASHBOARD_DIR / "attended_dates.json"
     if attended:
         saved.write_text(json.dumps(attended, indent=1) + "\n")
@@ -859,7 +872,7 @@ def fix_plex_titles():
         return
     print("\n🏷  Checking Plex for untitled recordings…")
     try:
-        r = subprocess.run([sys.executable, str(script), "--daily"],
+        r = subprocess.run([sys.executable, str(script), "--daily"] + ([] if USE_DMBALMANAC else ["--no-almanac"]),
                            capture_output=True, text=True, timeout=3600)
         out = (r.stdout or "").strip() or (r.stderr or "").strip()
         print("  " + out.replace("\n", "\n  ") if out else "  (no output)")
