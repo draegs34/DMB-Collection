@@ -24,7 +24,9 @@ CURRENT_YEAR    = str(datetime.now().year)
 
 BASE    = "https://dmbalmanac.com"
 DELAY   = 1.0
-HEADERS = {"User-Agent": "DMB-Collection-Scanner/2.0 (personal hobby project)"}
+# Every request to dmbalmanac.com identifies us (agreed with DMBAlmanac, Nov 2026)
+USER_AGENT = "DMB-Collection/3.0 (+mailto:JamesDraeger@gmail.com)"
+HEADERS = {"User-Agent": USER_AGENT}
 
 # ── Plex config ───────────────────────────────────────────────────────────────
 # Token is read from ~/.dmb_plex_token — never hardcoded here.
@@ -38,9 +40,10 @@ PLEX_MACHINE_ID  = "341172425e0e6f0ff15189aa5ab8d1e0a2acd625"
 MEMBER_SHOWS_URL = "https://dmbalmanac.com/myalmanac/MyShows.aspx?number=1551"
 
 # ── DMBAlmanac access ─────────────────────────────────────────────────────────
-# False = never contact dmbalmanac.com: no 2026 tour scrape, attended shows come
-# from attended_dates.json, and the Plex title fix uses info files only.
-USE_DMBALMANAC = False
+# DMBAlmanac agreed to ONE request per day: the My Shows page below.
+# Keep USE_DMBALMANAC False (no tour scrape, no setlist lookups) unless they OK more.
+CHECK_ATTENDED = False     # the single daily request (My Shows page, no retries) — suspended
+USE_DMBALMANAC = False     # 2026 tour scrape + Plex title setlist lookups
 
 # ── Optional deps ─────────────────────────────────────────────────────────────
 try:
@@ -809,11 +812,11 @@ def main():
         print("⚠  Plex map empty — keeping the existing Plex links in the page")
 
     # ── Inject attended dates (slice replacement) ──────────────────────────────
-    if USE_DMBALMANAC:
-        print(f"\n🎟  Scraping attended shows…")
+    if CHECK_ATTENDED:
+        print(f"\n🎟  Checking attended shows (1 request to DMBAlmanac)…")
         attended = scrape_attended()
     else:
-        print(f"\n🎟  Attended shows from attended_dates.json (DMBAlmanac turned off)")
+        print(f"\n🎟  Attended shows from attended_dates.json (CHECK_ATTENDED is off)")
         attended = []
     saved = DASHBOARD_DIR / "attended_dates.json"
     if attended:

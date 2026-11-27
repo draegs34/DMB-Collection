@@ -357,7 +357,7 @@ def almanac_setlist(url):
         return None
     time.sleep(1.0)                                   # be polite to dmbalmanac.com
     try:
-        r = requests.get(url, headers={"User-Agent": "DMB-Collection-Scanner/2.0 (personal hobby project)"}, timeout=30)
+        r = requests.get(url, headers={"User-Agent": "DMB-Collection/3.0 (+mailto:JamesDraeger@gmail.com)"}, timeout=30)
         r.raise_for_status()
     except Exception as e:
         print(f"\n⚠  DMBAlmanac fetch failed ({e})")

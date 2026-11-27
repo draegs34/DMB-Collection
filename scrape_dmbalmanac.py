@@ -26,7 +26,7 @@ except ImportError:
 
 BASE    = "https://dmbalmanac.com"
 DELAY   = 1.0
-HEADERS = {"User-Agent": "DMB-Collection-Scraper/2.0 (personal hobby project)"}
+HEADERS = {"User-Agent": "DMB-Collection/3.0 (+mailto:JamesDraeger@gmail.com)"}
 
 SESSION = requests.Session()
 SESSION.headers.update(HEADERS)
